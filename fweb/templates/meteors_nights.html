@@ -1,0 +1,172 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "popup_image.html" %}
+{% endblock %}
+
+{% block ptitle %}Meteors : MMT Archive{% endblock %}
+
+{% block title %}Meteors detected by MMT{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+    <div class="col-sm-6">
+
+  {% paginate 50 nights %}
+  <table class="table table-striped table-condensed">
+    <tr>
+      <th>Night</th>
+      <th>Nmeteors</th>
+      <th>Moon<br>Phase</th>
+      <th></th>
+    </tr>
+
+    {% for night in nights %}
+      <tr>
+        <td><a href="{% url "meteors_list" night.night %}"><span class="glyphicon glyphicon-th-list"></span> {{ night.night }}</a></td>
+        <td>{{ night.nmeteors }}</td>
+        <td>{{ night|night_moon_phase|floatformat:1 }}</td>
+        <td>
+          <a href="{% url 'meteors_radiants' night.night %}" title="Radiants" onclick="return popupImage(event, '{% url 'meteors_radiants' night.night %}', 'Radiants, equatorial coordinates');">R</a>
+          <a href="{% url 'meteors_night_plot' night.night 'ang_vel' %}" title="Angular velocities" onclick="return popupImage(event, '{% url 'meteors_night_plot' night.night 'ang_vel' %}', 'Angular velocities');">V</a>
+          <a href="{% url 'meteors_night_plot' night.night 'duration' %}" title="Durations" onclick="return popupImage(event, '{% url 'meteors_night_plot' night.night 'duration' %}', 'Durations');">T</a>
+          <a href="{% url 'meteors_night_plot' night.night 'mag_min' %}" title="Peak magnitudes" onclick="return popupImage(event, '{% url 'meteors_night_plot' night.night 'mag_min' %}', 'Peak magnitudes');">M</a>
+          -
+          <a href="{% url 'meteors_download' night.night %}" title="Download night">D</a>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+
+  {% show_pages %}
+
+    </div>
+
+    <div class="col-sm-6">
+      <div class="panel panel-default">
+        <table class="table table-striped table-condensed">
+          <tr><th></th><th>MMT</th><th>FAVOR</th></tr>
+          <tr><td>Meteors</td><td>{{ aggregates.id__count }}</td><td>{{ aggregates_favor.id__count }}</td></tr>
+          <tr><td>Oldest</td>
+            <td><a href="{% url "meteors_list" aggregates.night__min %}">{{ aggregates.night__min }}</a></td>
+            <td><a href="{% url "meteors_list" aggregates_favor.night__min %}">{{ aggregates_favor.night__min }}</a></td>
+          </tr>
+          <tr><td>Latest</td>
+            <td><a href="{% url "meteors_list" aggregates.night__max %}">{{ aggregates.night__max }}</a></td>
+            <td><a href="{% url "meteors_list" aggregates_favor.night__max %}">{{ aggregates_favor.night__max }}</a></td>
+          </tr>
+        </table>
+      </div>
+
+      <div>
+        <p class="help-block">
+          This database presents the results of uniform processing of meteor tracks detected by Mini-MegaTORTORA (MMT)
+          wide-field camera, operational since Jun 2014, as well as historical events acquired by FAVOR wide-field camera
+          in 2006-2009 years. The database contains the positional (sky coordinates of start/end of trails) and basic
+          photometric (integral brightness calibrated to V filter and brightness profiles along the trail) information.
+          Also, simple estimator of meteor radiants, computed as a density of intersections of meteor trails, is presented.
+          <br>
+          FAVOR data are a bit limited compared to MMT one, and its photometric information is often not quite reliable.
+          Also, its positional accuracy is significantly worse.
+          <br>
+          If you have any questions or wish to use the data in your research, please contact <a href="mailto:karpov.sv@gmail.com">Sergey Karpov</a>.
+          Read the basic <a data-toggle="collapse" href="#description">data access policy</a> also.
+        </p>
+      </div>
+
+      <div id="description" class="collapse">
+        <h4>Data access policy</h4>
+        <p>
+          If you use historical FAVOR data, please cite the following papers:
+          <ul>
+            <li>Karpov et al, "<a href="http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=2005NCimC..28..747K&db_key=AST&link_type=ABSTRACT&high=53f5cd8e2923357">Optical camera with high temporal resolution to search for transients in the wide field</a>",
+              2005, Nuovo Cimento C, 28, 474</li>
+            <li>Biruikov et al, "<a href="http://adsabs.harvard.edu/cgi-bin/nph-data_query?bibcode=2004AN....325..676B&db_key=AST&link_type=ABSTRACT&high=53f5cd8e2923357">Software for detection of optical transients in observations with rapid wide-field camera</a>",
+              2004, Astronomische Nachrichten, 325, 676</li>
+          </ul>
+        </p>
+        <p>
+          In you wish to use MMT (recent and actively maintained) data, please contact us directly for relevant terms. The paper describing
+          the database is in preparation.
+        </p>
+
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" href="#meteors_ang_vel"><span class="glyphicon glyphicon-signal"></span> Angular velocities</a>
+          </h4>
+        </div>
+        <div id="meteors_ang_vel" class="panel-collapse collapse in">
+          <div class="panel-body">
+            <img src="{% url 'meteors_plot' 'ang_vel' %}" class="img-responsive center-block"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" href="#meteors_duration"><span class="glyphicon glyphicon-signal"></span> Durations</a>
+          </h4>
+        </div>
+        <div id="meteors_duration" class="panel-collapse collapse in">
+          <div class="panel-body">
+            <img src="{% url 'meteors_plot' 'duration' %}" class="img-responsive center-block"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" href="#meteors_mag_min"><span class="glyphicon glyphicon-signal"></span> Peak magnitudes</a>
+          </h4>
+        </div>
+        <div id="meteors_mag_min" class="panel-collapse collapse in">
+          <div class="panel-body">
+            <img src="{% url 'meteors_plot' 'mag_min' %}" class="img-responsive center-block"/>
+          </div>
+        </div>
+      </div>
+
+      <!--
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" href="#meteors_z"><span class="glyphicon glyphicon-signal"></span> Zenith distance</a>
+          </h4>
+        </div>
+        <div id="meteors_z" class="panel-collapse collapse">
+          <div class="panel-body">
+            <img src="{% url 'meteors_plot' 'z' %}" class="img-responsive center-block"/>
+          </div>
+        </div>
+      </div>
+      -->
+
+      <!--
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" href="#meteors_rate"><span class="glyphicon glyphicon-signal"></span> Rate</a>
+          </h4>
+        </div>
+        <div id="meteors_rate" class="panel-collapse collapse">
+          <div class="panel-body">
+            <img src="{% url 'meteors_plot' 'rate' %}" class="img-responsive center-block"/>
+          </div>
+        </div>
+      </div>
+      -->
+
+    </div>
+  </div>
+
+
+{% endblock %}

@@ -1,0 +1,88 @@
+{% load endless %}
+{% load filters %}
+
+<table class="table table-striped table-condensed">
+  <tr><td class="col-md-6">Number of records</td><td class="col-md-6">{{ track.satelliterecords_set.count }}</td></tr>
+  <tr><td>Start</td><td>{{ track|satellite_track_start|date:"Y-m-d H:i:s" }} UT</td></tr>
+  <tr><td>End</td><td>{{ track|satellite_track_end|date:"Y-m-d H:i:s" }} UT</td></tr>
+  <tr><td>Duration</td><td>{{ track|satellite_track_duration|floatformat:1 }} s</td></tr>
+
+  <tr><td>Period</td><td>{{ tle.period|floatformat:2 }} minutes</td></tr>
+  <tr><td>Inclination</td><td>{{ tle.inclination|floatformat:2 }} degrees</td></tr>
+  <tr><td>Eccentricity</td><td>{{ tle.eccentricity|floatformat:2 }}</td></tr>
+
+  <tr><td>Age of orbit</td><td>{{ track.age }} days</td></tr>
+  <tr><td>Transversal shift</td><td>{{ track.transversal_shift|floatformat:0 }} &plusmn; {{ track.transversal_rms|floatformat:0 }} arcsec</td></tr>
+  <tr><td>Binormal shift</td><td>{{ track.binormal_shift|floatformat:0 }} &plusmn; {{ track.binormal_rms|floatformat:0 }} arcsec</td></tr>
+
+  <tr><td>Variability</td><td>
+    {% if track.variability == 1 %}
+      <span class="text-default">Aperiodic</span>
+    {% elif track.variability == 2 %}
+      <span class="text-default">Periodic</span></td></tr><tr><td>Lightcurve period:</td><td>{{ track.variability_period|floatformat:2 }} s
+    {% else %}
+      Not variable
+    {% endif %}
+  </td></tr>
+
+  <tr><td>Std Mag (Clear)</td><td>{{ track|satellite_mean_stdmag:0|floatformat:2 }}{% if track|satellite_mean_stdmag:0 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:0|floatformat:2 }}</td></tr>
+  <tr><td>Std Mag (B)</td><td>{{ track|satellite_mean_stdmag:1|floatformat:2 }}{% if track|satellite_mean_stdmag:1 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:1|floatformat:2 }}</td></tr>
+  <tr><td>Std Mag (V)</td><td>{{ track|satellite_mean_stdmag:2|floatformat:2 }}{% if track|satellite_mean_stdmag:2 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:2|floatformat:2 }}</td></tr>
+  <tr><td>Std Mag (R)</td><td>{{ track|satellite_mean_stdmag:3|floatformat:2 }}{% if track|satellite_mean_stdmag:3 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:3|floatformat:2 }}</td></tr>
+
+  <tr><td>Penumbral</td><td>
+    {% if track|satellite_track_penumbra %}
+      <span class="glyphicon glyphicon-eye-close" style="color:red"></span> Yes{% else %}
+      <span class="glyphicon glyphicon-eye-open"></span> No
+    {% endif %}
+  </td></tr>
+  <tr><td>Filters:</td><td>{{ track_filters|join:" " }}</td></tr>
+  <tr><td>Channels:</td><td>{{ track_channels|join:" " }}</td></tr>
+  {% if perms.fweb.access_realtime %}
+    <tr><td>Realtime:</td><td>
+      {% for object_id in track_objects %}
+        {% if forloop.counter0 %}  {% endif %}
+        <a href="{% url 'realtime_object' object_id %}">{{ object_id }}</a>
+      {% endfor %}
+    </td></tr>
+  {% endif %}
+</table>
+
+{% if perms.fweb.modify_satellites %}
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Modify Track</a>
+      </h4>
+    </div>
+    <div id="actions" class="panel-collapse collapse">
+      <div class="panel-body">
+
+        <form action="" method="post" class="form-inline">{% csrf_token %}
+
+          <select class="form-control" name="new_variability">
+            <option value=0 {% if track.variability == 0 %}selected{% endif %}>Non-variable</option>
+            <option value=1 {% if track.variability == 1 %}selected{% endif %}>Aperiodic</option>
+            <option value=2 {% if track.variability == 2 %}selected{% endif %}>Periodic</option>
+          </select>
+
+          <div class="form-group">
+            <div class="input-group">
+              <div class="input-group-addon">Period</div>
+              <input class="form-control" type="text" name="new_period" placeholder="Period, seconds" size=8 value="{{ track.variability_period }}">
+            </div>
+          </div>
+
+          <button class="btn btn-default" type="submit" name="action" value="update_track">Update</button>
+          {% if track.variability == 2 %}
+            <button class="btn btn-default" type="submit" name="action" value="refine_track_period">Refine Period</button>
+          {% endif %}
+          <!-- <button class="btn btn-default" type="submit" name="action" value="delete_track">Delete track</button> -->
+
+        </div>
+      </div>
+    </div>
+
+  </form>
+
+{% endif %}

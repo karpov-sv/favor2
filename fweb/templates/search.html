@@ -1,0 +1,77 @@
+{% extends "template.html" %}
+
+{% block ptitle %}Search : MMT Archive{% endblock %}
+
+{% block title %}Search MMT database{% endblock %}
+
+{% block content %}
+
+<h3>Image search</h3>
+
+<form class="form-inline" role="form" action="/images/coords" method="post">{% csrf_token %}
+  <div class="form-group">
+    <label class="sr-only" for="sr">Coordinates</label>
+    <input type="text" class="form-control" id="coords" name="coords" placeholder="Coordinates or SIMBAD object name" size=40>
+  </div>
+  <div class="form-group">
+    <label class="sr-only" for="sr">Radius</label>
+    <input type="text" class="form-control" id="sr" name="sr" placeholder="Radius, degrees">
+  </div>
+  <div class="form-group">
+    <label class="sr-only" for="sr">Image Type</label>
+    <select class="form-control" name="type">
+      <option value="all">All</option>
+      <option value="avg">AVG</option>
+      <option value="survey">Survey</option>
+      <option value="imaging">Imaging</option>
+      <option value="target">Target</option>
+      <option value="Swift">Swift</option>
+      <option value="Fermi">Fermi</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-default">Search</button>
+
+  <span class="help-block">It will search the database of all long-term storage images - average frames, dark/flat calibrations etc. Search is for the image center positions, please use appropriate search radius (like 5 degrees) to get all frames overlapping the position.</span>
+</form>
+
+<h3>Survey data</h3>
+
+<form class="form-inline" role="form" action="/survey/" method="post">{% csrf_token %}
+  <div class="form-group">
+    <label class="sr-only" for="sr">Coordinates</label>
+    <input type="text" class="form-control" id="coords" name="coords" placeholder="Coordinates or SIMBAD object name" size=40>
+  </div>
+  <div class="form-group">
+    <label class="sr-only" for="sr">Radius</label>
+    <input type="text" class="form-control" id="sr" name="sr" placeholder="Radius, degrees" value="0.1">
+  </div>
+  <button type="submit" class="btn btn-default">Search</button>
+
+  <span class="help-block">It will present all flux measurements in a given region (acquired during second time scale processing, i.e. by analysing 100-frame averages) as a single light curve.</span>
+</form>
+
+<h3>Photometric data</h3>
+
+<form class="form-inline" role="form" action="{% url 'survey_photometry' %}" method="post">{% csrf_token %}
+  <div class="form-group">
+    <label class="sr-only" for="sr">Coordinates</label>
+    <input type="text" class="form-control" id="coords" name="coords" placeholder="Coordinates or SIMBAD object name" size=40>
+  </div>
+  <div class="form-group">
+    <label class="sr-only" for="sr">Radius</label>
+    <input type="text" class="form-control" id="sr" name="sr" value="0.01" placeholder="Radius, degrees">
+  </div>
+  <button type="submit" class="btn btn-default">Search</button>
+
+  <span class="help-block">It will present all flux measurements in a given region as a single light curve.</span>
+</form>
+
+<h3>Database access</h3>
+
+<p>You may also access the database directly using our <a href="{% url 'sql' %}">SQL Query</a> tool</p>
+
+<h3>Comments</h3>
+
+<p>Some objects we store have comments attached. You may see the <a href="{% url 'comments' %}">list of these comments</a></p>
+
+{% endblock %}

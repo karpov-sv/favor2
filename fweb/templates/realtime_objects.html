@@ -1,0 +1,369 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "popup_image.html" %}
+<!-- Bootbox -->
+<script src="{{ STATIC_URL }}/web/bootbox.min.js"></script>
+
+<script language="javascript">
+ $(function () {
+   $('.checkall').on('click', function () {
+     $(this).closest('fieldset').find(':checkbox').prop('checked', this.checked);
+   });
+ });
+
+ $(document).ready(function() {
+   $('#objects_table tr').click(function(event) {
+     if (event.target.type !== 'checkbox' && !event.target.href) {
+       $(':checkbox', this).trigger('click');
+     }
+   });
+ });
+
+ displayAnimation = function(id, details)
+ {
+   // Fix for Safari CMD-click handled by onclick()
+   if(window.event.metaKey)
+     return true;
+
+   var base = "/realtime/object/" + id;
+   var body = $("<div/>", {class: ""});
+   var tmp;
+
+   var title = "Object " + id + (details ? (": " + details) : "");
+
+   tmp = $("<img/>", {class:"img img-responsive center-block", src:base + "/animation"}).appendTo(body);
+
+   bootbox.dialog({
+     title: title,
+     message: body,
+     onEscape: function() {},
+     buttons: {
+       mark: {
+         label: "Mark object",
+         //className: "btn-primary",
+         callback: function() {$("input[type=checkbox][value="+id+"]").prop("checked",true);}
+       },
+       unmark: {
+         label: "Unmark",
+         callback: function() {$("input[type=checkbox][value="+id+"]").prop("checked",false);}
+       },
+       particle: {
+         label: "Mark as Particle",
+         callback: function() {
+           data = {action: "change_state_particle"};
+
+           success = function(){
+             $(".tr_"+id).fadeOut(1000, function(){ $(this).remove();});
+           };
+
+           $.ajax({type: "POST", url: base, data: data, success: success});
+         }
+       },
+       delete: {
+         label: "Delete",
+         callback: function() {
+           data = {action: "delete"};
+
+           success = function(){
+             $(".tr_"+id).fadeOut(1000, function(){ $(this).remove();});
+           };
+
+           $.ajax({type: "POST", url: base, data: data, success: success});
+         }
+       },
+       open: {
+         label: "Open",
+         callback: function() {window.open(base + "#animation", "_blank");}
+       },
+     }
+   });
+
+   return false;
+ }
+</script>
+<style>
+ .modal-dialog {width: 850px; margin: 0 auto;}
+ .modal-body {padding: 0; margin: 0;}
+ .modal-footer {margin: 0;}
+</style>
+
+{% endblock %}
+
+{% block ptitle %}Realtime : MMT Archive{% endblock %}
+
+{% block title %}Realtime objects
+  {% if night and night != 'all' %}on night <a href="{% url 'night_summary' night %}" title="Summary of the night">{{ night }}</a> {% endif %}
+  / {{ state }}
+  {% if state == 'meteor' and night and night != 'all' %}
+    - <a href="{% url 'meteors_list' night %}" title="This night in meteor database">DB</a>
+  {% elif state == 'meteor' %}
+    - <a href="{% url 'meteors_nights' %}" title="Meteor database">DB</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  <!-- Pager -->
+  {% if night and night != 'all' %}
+    <ul class="pager">
+      {% if night_prev %}
+        <li class="previous"><a href="/realtime/night/{{ night_prev.night }}{% if state and state != 'all' %}/{{ state }}{% endif %}{% if request.GET %}?{{ request.GET|GET_urlencode }}{% endif %}"><span class="glyphicon glyphicon-backward"></span> {{ night_prev.night }}</a></li>
+      {% endif %}
+
+      {% if night_next %}
+        <li class="next"><a href="/realtime/night/{{ night_next.night }}{% if state and state != 'all' %}/{{ state }}{% endif %}{% if request.GET %}?{{ request.GET|GET_urlencode }}{% endif %}">{{ night_next.night }} <span class="glyphicon glyphicon-forward"></span></a></li>
+      {% endif %}
+    </ul>
+  {% endif %}
+
+
+<div class="pull-right">
+  {% if request.GET.singlepage %}
+    <a href="?{{ request.GET|GET_remove:"singlepage"|GET_urlencode }}">Multi-page</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"singlepage"|GET_urlencode }}">Single-page</a>
+  {% endif %}
+  -
+  {% if request.GET.preview %}
+    <a href="?{{ request.GET|GET_remove:"preview"|GET_urlencode }}">No previews</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"preview"|GET_urlencode }}">Previews</a>
+  {% endif %}
+
+  {% if state == 'meteor' %}
+    -
+    {% if request.GET.unanalyzed %}
+      <a href="?{{ request.GET|GET_remove:"unanalyzed"|GET_urlencode }}">All</a>
+    {% else %}
+      <a href="?{{ request.GET|GET_append:"unanalyzed"|GET_urlencode }}">Unanalyzed</a>
+    {% endif %}
+  {% endif %}
+</div>
+
+{% if state == 'meteor' %}
+  <!-- Move to next line -->
+  <div class="clearfix"></div>
+
+  <div class="pull-right">
+    <a href="?{{ request.GET|GET_remove:"analyzed"|GET_append:"unanalyzed"|GET_append:"singlepage"|GET_append:"preview"|GET_urlencode }}">Preview Unanalyzed</a>
+    -
+    <a href="?{{ request.GET|GET_remove:"unanalyzed"|GET_append:"analyzed"|GET_append:"singlepage"|GET_append:"preview"|GET_urlencode }}">Preview Analyzed</a>
+    -
+    <a href="?{{ request.GET|GET_remove:"unanalyzed"|GET_remove:"analyzed"|GET_append:"singlepage"|GET_append:"preview"|GET_urlencode }}">Preview All</a>
+  </div>
+{% endif %}
+
+{% if state == 'flash' and night and night != 'all' %}
+  <!-- Move to next line -->
+  <div class="clearfix"></div>
+
+  <div class="pull-right">
+    <a href="{% url 'alerts_map' night %}" onclick="return popupImage(event, '{% url 'alerts_map' night %}', 'Map of Alerts', true);">Map of Alerts</a>
+    -
+    <a href="{% url 'alerts_night' night %}">Alerts</a>
+  </div>
+{% endif %}
+
+
+{% if state == 'moving' %}
+  <!-- Move to next line -->
+  <div class="clearfix"></div>
+
+  <div class="pull-right">
+    <a href="?{{ request.GET|GET_remove:"min_length"|GET_append:"min_length=500"|GET_urlencode }}">Length>500</a>
+    -
+    <a href="?{{ request.GET|GET_remove:"min_length"|GET_append:"min_length=100"|GET_urlencode }}">Length>100</a>
+    -
+    <a href="?{{ request.GET|GET_remove:"min_length"|GET_urlencode }}">All</a>
+  </div>
+{% endif %}
+
+{% if states %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Filter:</span>
+    {% for state1 in states %}
+      {% if night and night != 'all' %}
+        <a class="btn btn-default btn-sm {% if state == state1 %} disabled {% endif %}" href="/realtime/night/{{ night }}/{{ state1 }}">{{ state1 }}</a>
+      {% else %}
+        <a class="btn btn-default btn-sm {% if state == state1 %} disabled {% endif %}" href="/realtime/{{ state1 }}">{{ state1 }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if channels %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Channel:</span>
+    {% for channel in channels %}
+      {% with text="channel="|add:channel %}
+        <a class="btn btn-default btn-sm {% if request.GET.channel == channel %} disabled {% endif %}" href="?{{ request.GET|GET_remove:"channel"|GET_append:text|GET_urlencode }}">{{ channel }}</a>
+      {% endwith %}
+    {% endfor %}
+    <a class="btn btn-default btn-sm" href="?{{ request.GET|GET_remove:"channel"|GET_urlencode }}">All</a>
+  </div>
+</div>
+{% endif %}
+
+<form action="" method="post">{% csrf_token %}
+
+{% if not request.GET.singlepage %}
+{% paginate 50 objects %}
+{% endif %}
+  <fieldset>
+    <table class="table table-striped table-condensed" id="objects_table">
+      <tr>
+        {% if perms.fweb.modify_data %}
+          <th><input type="checkbox" class="checkall"></th>
+        {% endif %}
+        <th>Object</th>
+        <th style="text-align:center">State</th>
+        <th style="text-align:center">Length</th>
+        <th style="text-align:center">Nimages</th>
+        <th style="text-align:center">Start Time, UT</th>
+        {% if state == 'flash' %}
+          <th style="text-align:center">RA</th>
+          <th style="text-align:center">Dec</th>
+        {% else %}
+          <th style="text-align:center">End Time, UT</th>
+        {% endif %}
+        <th style="text-align:center">Channel</th>
+        {% if state == 'moving' %}
+          <th style="text-align:center">Ang.Vel.</th>
+        {% endif %}
+        <th></th>
+        <th></th>
+      </tr>
+      {% for object in objects %}
+      <tr {% if request.GET.preview %}style="border-top: 2px solid black"{% endif %} class="tr_{{object.id}}">
+        {% if perms.fweb.modify_data %}
+          <td><input type="checkbox" name="object_ids[]" value="{{object.id}}"></td>
+        {% endif %}
+        <td><a href="{% url 'realtime_object' object.id %}">
+            {% if object.state.name == 'flash' %}
+            <span class="glyphicon glyphicon-star"></span>
+            {% elif object.state.name == 'moving' %}
+            <span class="glyphicon glyphicon-plane"></span>
+            {% elif object.state.name == 'meteor' %}
+            <span class="glyphicon glyphicon-flash"></span>
+            {% else %}
+            <span class="glyphicon glyphicon-question-sign"></span>
+            {% endif %}
+            {{ object.id }}</a></td>
+        <td align=center>{{ object.state.name }}
+          {% if object.params.classification %}
+          <span class="glyphicon glyphicon-info-sign" title="{{ object.params.classification }}"></span>
+          {% endif %}
+          {% if object.params.related %}
+          <span class="glyphicon glyphicon-link" title="Related: {{ object.params.related }}"></span>
+          {% endif %}
+          {% if object.realtimecomments_set.count %}
+          <span class="glyphicon glyphicon-comment" title="{% for comment in object.realtimecomments_set.all %} {{comment.comment }} {% endfor %}"></span>
+          {% endif %}
+        </td>
+        <td align=right>{{ object.nrecords }} </td>
+        <td align=right>{{ object.nimages }} </td>
+        <td>{{ object.time_start|date:"Y-m-d H:i:s.u" }} </td>
+        {% if state == 'flash' %}
+          <td>{{ object.ra0|floatformat:2 }}</td>
+          <td>{{ object.dec0|floatformat:2 }}</td>
+        {% else %}
+          <td>{{ object.time_end|date:"Y-m-d H:i:s.u" }} </td>
+        {% endif %}
+        <td align=center>{{ object.channel_id }}
+          {% if object.filter_id %}
+            / {{ object.filter_id | filter_name }}
+          {% endif %}
+        </td>
+        {% if state == 'moving' %}
+          <td align=center>
+            Vx = {{ object.params.Cx1 | angvel | floatformat:2 }},
+            Vy = {{ object.params.Cy1 | angvel | floatformat:2 }}
+          </td>
+        {% endif %}
+        <td><a href="{% url 'realtime_object' object.id %}"><span class="glyphicon glyphicon-eye-open"></span> View</a></td>
+        <td>
+          {% if object.nimages %}
+          <a href="{% url 'realtime_object_animation' object.id %}" onclick="return displayAnimation({{ object.id }}, '{{ object.state.name }}, channel {{ object.channel_id }}, {{ object.nrecords }} records, {{ object.nimages }} images');"><span class="glyphicon glyphicon-facetime-video"></span> Animation</a>
+          {% endif %}
+          {% if object.params.analyzed == '1' %}
+            <a href="{% url 'meteor_details' object.id %}"><span class="glyphicon glyphicon-flash"></span> Meteor</a>
+          {% endif %}
+          {% if state == 'flash' and object.alert %}
+            <a href="{% url 'alert_details' object.alert.id %}"><span class="glyphicon glyphicon-th"></span> Alert</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% if object.firstimage %}
+      <tr class="tr_{{object.id}}">
+        <td colspan=11 align="center">
+          <a href="{% url 'realtime_object' object.id %}#animation" onclick="return displayAnimation({{ object.id }}, '{{ object.state.name }}, channel {{ object.channel_id }}, {{ object.nrecords }} records, {{ object.nimages }} images');">
+            {% if object.firstimage0 %}
+              <img src="{% url 'realtime_image_preview_large' object.firstimage0.id %}" class="img img-responsive center-block"  style="whitespace:nowrap;display:inline;">
+            {% endif %}
+            <img src="{% url 'realtime_image_preview_large' object.firstimage.id %}" class="img img-responsive center-block" style="whitespace:nowrap;display:inline;">
+            {% if object.firstimage1 %}
+              <img src="{% url 'realtime_image_preview_large' object.firstimage1.id %}" class="img img-responsive center-block" style="whitespace:nowrap;display:inline;">
+            {% endif %}
+            {% if request.GET.preview and object.state.name == 'flash' %}
+              <img src="{% url 'realtime_object_magnitudes' object.id %}" class="img img-responsive center-block">
+            {% endif %}
+          </a>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </table>
+  </fieldset>
+{% if not request.GET.singlepage %}
+{% show_pages %}
+{% endif %}
+
+{% if perms.fweb.modify_data %}
+<!-- Actions -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+    </h4>
+  </div>
+  <div id="actions" class="panel-collapse collapse">
+    <div class="panel-body">
+      <div class="form-group">
+        <div class="button-group">
+          <button class="btn btn-default" type="submit" name="action" value="process">(Re)Process</button>
+          <button class="btn btn-default" type="submit" name="action" value="process_all">Process Unprocessed</button>
+          <button class="btn btn-default" type="submit" name="action" value="reprocess_all">Reprocess All</button>
+          <button class="btn btn-default" type="submit" name="action" value="preview">Preview</button>
+          <button class="btn btn-default" type="submit" name="action" value="preview_all">Preview All</button>
+          {% if not state or state == 'all' or state == 'meteor' %}
+          <button class="btn btn-default" type="submit" name="action" value="merge_meteors">Merge Meteors</button>
+          <!-- <button class="btn btn-default" type="submit" name="action" value="filter_laser">Filter Laser</button> -->
+          {% endif %}
+          {% if night and night != 'all' and state == 'meteor' %}
+          <button class="btn btn-default" type="submit" name="action" value="meteors_night_processed">Mark Night as Processed</button>
+          {% endif %}
+          {% if not state or state == 'all' or state == 'moving' %}
+          <button class="btn btn-default" type="submit" name="action" value="filter_satellites">Filter Satellites</button>
+          {% endif %}
+          {% if not state or state == 'all' or state == 'flash' %}
+          <button class="btn btn-default" type="submit" name="action" value="filter_flashes">Filter Flashes</button>
+          {% endif %}
+          <button class="btn btn-default" type="submit" name="action" value="delete">Delete</button>
+          <!-- Unused? -->
+          <input type="hidden" name="singlepage" value="{{ singlepage }}">
+          <input type="hidden" name="preview" value="{{ preview }}">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

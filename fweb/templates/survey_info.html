@@ -1,0 +1,55 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% load filters %}
+
+{% block ptitle %}Survey : MMT Archive{% endblock %}
+
+{% block title %}Survey data for ({{ ra }}, {{dec}}): {{ images|length }} images{% endblock %}
+
+{% block content %}
+
+<div class="pull-right">
+  {% if request.GET.singlepage %}
+    <a href="?{{ request.GET|GET_remove:"singlepage"|GET_urlencode }}">Multi-page</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"singlepage"|GET_urlencode }}">Single-page</a>
+  {% endif %}
+  -
+  {% if request.GET.filter == '2' %}
+    <a href="?{{ request.GET|GET_remove:"filter"|GET_urlencode }}">All frames</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"filter=2"|GET_urlencode }}">Frames with photometry</a>
+  {% endif %}
+
+</div>
+
+<div class="clearfix">
+</div>
+
+<!-- Light curve -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lc-mag"><span class="glyphicon glyphicon-signal"></span> Light curve</a>
+    </h4>
+  </div>
+  <div id="lc-mag" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="{% url 'survey_lightcurve' ra dec 0.01 %}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+{% if not request.GET.singlepage %}
+{% paginate 50 images %}
+{% endif %}
+
+{% include 'survey_block_subimages.html' with ra=ra dec=dec sr=sr %}
+
+{% if not request.GET.singlepage %}
+{% show_pages %}
+{% endif %}
+
+{% endblock %}

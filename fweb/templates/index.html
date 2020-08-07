@@ -1,0 +1,128 @@
+{% extends "template.html" %}
+
+{% load filters %}
+{% load cache %}
+
+{% block ptitle %}MMT{% endblock %}
+
+{% block title-div %}{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+
+    <div class="col-sm-9">
+      {% if news %}
+        <h3>System Activity</h3>
+        <div>
+          <dl class="dl-horizontal">
+            {% for item in news %}
+              <dt>{{ item.time|date:"Y-m-d H:i:s " }} UT</dt><dd>{{ item.text|urlify_news }}</dd>
+            {% endfor %}
+            <dt></dt><dd><a href="{% url 'logs' %}/news">More ...</a></dd>
+          </dl>
+        </div>
+      {% endif %}
+
+      <h3>About MMT</h3>
+
+      {% include 'block_about.html' %}
+
+      <a href="about/access"><h3>Data Access</h3></a>
+
+      {% include 'block_data.html' %}
+
+    </div>
+
+    <div class="col-sm-3">
+      <small>
+
+      <div class="panel panel-default float-right">
+        <div class="panel-heading">
+          <a href="{% url 'status_beholder' %}">MMT State</a> / <a
+          href="http://allsky.sonarh.ru:8000">Meteo</a>
+        </div>
+        {% if perms.fweb.access_beholder %}
+          <a href="{% url 'beholder' %}" title="Access Central Control">
+        {% else %}
+          <a href="{% url 'status_beholder' %}" title="Archive of status information">
+        {% endif %}
+        <img src="{% url 'status_beholder_sky' %}" class="img img-responsive center-block"/></a>
+      </div>
+
+      {% if comments %}
+{% cache 3000 sidebar-comments %}
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <a href="{% url 'comments' %}">Latest Comments on Realtime Objects</a>
+        </div>
+        <table class="table table-condensed">
+            {% for comment in comments %}
+              <tr>
+                <td><b><a href="{% url 'realtime_object' comment.object.id %}">{{ comment.object.id }}</a>/{{ comment.object.state.name }}
+                  {{ comment.object.time_start|date:"Y-m-d H:i:s" }}</b><br>
+                {{ comment.comment|linebreaksbr }}
+              </td></tr>
+            {% endfor %}
+        </table>
+      </div>
+{% endcache %}
+      {% endif %}
+
+{% cache 3000 sidebar-satellites %}
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <a href="{% url 'satellites_list' %}">Photometry of Satellites</a>
+        </div>
+        <table class="table table-striped table-condensed">
+          <tr><td>Satellites</td><td>{{ nsatellites }}</td></tr>
+          <tr><td>Tracks</td><td>{{ ntracks }}</td></tr>
+          <tr><td>Oldest</td><td>{{ satellites_time_min|date:"Y-m-d" }}</td></tr>
+          <tr><td>Latest</td><td>{{ satellites_time_max|date:"Y-m-d" }}</td></tr>
+        </table>
+      </div>
+{% endcache %}
+
+{% cache 3000 sidebar-meteors %}
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <a href="{% url 'meteors_nights' %}">Catalogue of Meteors</a>
+        </div>
+        <table class="table table-condensed">
+          <tr><td>Meteors</td><td>{{ nmeteors }}</td></tr>
+          <tr><td>Oldest</td><td>{{ meteors_time_min|date:"Y-m-d" }}</td></tr>
+          <tr><td>Latest</td><td>{{ meteors_time_max|date:"Y-m-d" }}</td></tr>
+        </table>
+      </div>
+{% endcache %}
+
+      {% if perms.fweb.modify_data and perms.fweb.access_realtime and meteors_nights_unprocessed %}
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            Nights with Unprocessed Meteors
+          </div>
+          <div class="panel-body">
+            <ul class="list-inline">
+              {% for unight in meteors_nights_unprocessed %}
+                <li><a href="/realtime/night/{{ unight.night }}/meteor">{{ unight.night }}</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <a href="https://goo.gl/maps/KHGCm">Our Location</a>
+        </div>
+        <table class="table table-condensed">
+          <tr><td>41&deg;25'53.3" E, 43&deg;38'59.5" N, 2030 m</td></tr>
+        </table>
+      </div>
+
+    </div>
+
+      </small>
+  </div>
+
+{% endblock %}

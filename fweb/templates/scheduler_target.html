@@ -1,0 +1,248 @@
+{% extends "template.html" %}
+
+{% load filters %}
+
+{% block ptitle %}Target {{target.id}} : MMT Archive{% endblock %}
+
+{% block title %}Scheduler target {{target.id}}: {{ target.name }}{% endblock %}
+
+{% block content %}
+
+<table class="table table-condensed table-striped">
+  <tr><td>Id</td><td>{{target.id}}</td></tr>
+  <tr><td>UUID</td><td>{{target.uuid}}</td></tr>
+  <tr><td>Status</td><td>{{target.status.name}}</td></tr>
+  <tr><td>External Id</td><td>{{target.external_id}}
+    {% if target.type == 'Swift' %}
+      - <a href="http://gcn.gsfc.nasa.gov/other/{{ target.external_id }}.swift">GCN</a>
+      - <a href="http://www.swift.ac.uk/grb_region/{{ target.external_id }}/">Swift</a>
+    {% endif %}
+    {% if target.type == 'Fermi' %}
+      - <a href="http://gcn.gsfc.nasa.gov/other/{{ target.external_id }}.fermi">GCN</a>
+    {% endif %}
+    {% if target.type == 'LVC' and 'test' not in target.name %}
+      - <a href="https://gracedb.ligo.org/events/view/G{{ target.external_id }}">GraceDB</a>
+    {% endif %}
+  </td></tr>
+  <tr><td>Target Name</td><td>{{target.name}}</td></tr>
+  <tr><td>Target Type</td><td>{{target.type}}</td></tr>
+  <tr><td>RA</td><td>{{target.ra|floatformat:2}}</td></tr>
+  <tr><td>Dec</td><td>{{target.dec|floatformat:2}}</td></tr>
+  {% if target.params.error %}
+    <tr><td>Error</td><td>{{ target.params.error }} deg</td></tr>
+  {% endif %}
+  {% if target.exposure %}
+    <tr><td>Exposure</td><td>{{target.exposure}} s</td></tr>
+  {% endif %}
+  {% if target.repeat > 1 %}
+    <tr><td>Repeat</td><td>{{target.repeat}}</td></tr>
+  {% endif %}
+  {% if target.filter %}
+    <tr><td>Filter</td><td>{{target.filter}}</td></tr>
+  {% endif %}
+  <tr><td>Created</td><td>{{target.time_created|date:"Y-m-d H:i:s"}} UT
+    <!--
+    {% if target.type == 'LVC' or target.type == 'Swift' %}
+      / <a href="{% url 'status_beholder' %}?time={{ target.time_created|date:"Y.m.d H:i:s"|urlencode }}" title="System status at that moment"><span class="glyphicon glyphicon-info-sign"></span>Status</a>
+    {% endif %}
+     -->
+  </td></tr>
+  <tr><td>Completed</td><td>
+    {% if target.time_completed %}
+      {{ target.time_completed|date:"Y-m-d H:i:s" }}
+    {% elif target.timetolive > 0 %}
+      TTL: {{ target.timetolive }} s
+    {% endif %}
+  </td></tr>
+</table>
+
+{% if target.type == 'LVC' %}
+<!-- LVC image -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lvc"><span class="glyphicon glyphicon-camera"></span> LVC map</a>
+    </h4>
+  </div>
+  <div id="lvc" class="panel-collapse">
+    <div class="panel-body">
+      <img src="{% url 'scheduler_target_lvc' target.id %}" class="img img-responsive center-block">
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if target.type == 'LVC' or target.type == 'Swift' or target.type == 'Fermi' %}
+<!-- System status -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#status"><span class="glyphicon glyphicon-camera"></span> System status</a>
+    </h4>
+  </div>
+  <div id="status" class="panel-collapse collapse">
+    <div class="panel-body">
+      <a href="{% url 'status_beholder' %}?time={{ target.time_created|date:"Y.m.d H:i:s"|urlencode }}" title="Click to see complete system status">
+        <img src="{% url 'scheduler_target_status' target.id %}" class="img img-responsive center-block">
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if target.filter == 'BVR' and nimages %}
+<!-- Three-color image -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#rgb"><span class="glyphicon glyphicon-camera"></span> RGB image</a>
+    </h4>
+  </div>
+  <div id="rgb" class="panel-collapse collapse">
+    <div class="panel-body">
+      <a href="{% url 'scheduler_target_rgb' target.id %}" title="Click for full-size image">
+        <img src="{% url 'scheduler_target_rgb' target.id %}" class="img img-responsive center-block">
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if nimages %}
+<h2>Images for Scheduler Target {{target.id}}</h2>
+
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Id</th>
+    <th>Time, UT</th>
+    <th>Night</th>
+    <th>Type</th>
+    <th>Target</th>
+    <th>RA</th>
+    <th>Dec</th>
+    <th>Filter</th>
+    <th>Channel</th>
+    {% if target.repeat > 1 %}
+      <th>Counter</th>
+    {% endif %}
+    <th>Preview</th>
+    <th></th>
+    {% for image in images %}
+  <tr>
+    <td><a href="/images/{{ image.id }}/" title="View image details"><span class="glyphicon glyphicon-picture"></span> {{ image.id }}</a></td>
+    <td>{{ image.time|date:"Y-m-d H:i:s" }}
+      {% if target.type == 'Swift' or target.type == 'Fermi' or target.type == 'LVC' %}<br>
+        T0 + {{ image.time|seconds_since:target.time_created|floatformat:1 }} s
+      {% endif %}
+    </td>
+    <td><a href="/images/night/{{ image.night }}{% if type %}/{{ type }}{% endif %}">{{ image.night }}</td>
+    <td>{{ image.type }}</td>
+    <td>{{ image.keywords.TARGET }}</td>
+    <td>{{ image.ra0 }}</td>
+    <td>{{ image.dec0 }}</td>
+    <td>{{ image.filter_string }}</td>
+    <td>{{ image.channel_id }}</td>
+    {% if target.repeat > 1 %}
+      <td>{{ image.keywords.COUNT }}</td>
+    {% endif %}
+    <td><a href="/images/{{ image.id }}/" title="{{ image.filename }}">
+      {% if image.type == 'Swift' %}
+        <img src="{% url 'survey_image' image.id target.ra target.dec 0.3 %}?ra0={{ target.ra }}&dec0={{ target.dec }}&sr0=0.05" class="img-responsive">
+      {% else %}
+        <img src="/images/{{ image.id }}/preview" class="img-thumbnail">
+      {% endif %}
+    </a></td>
+    <td><a href="/images/{{ image.id }}/download" title="Download"><span class="glyphicon glyphicon-floppy-disk"></span> </a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No images for this target</p>
+{% endif %}
+
+<!-- Actions -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+    </h4>
+  </div>
+  <div id="actions" class="panel-collapse collapse">
+    <div class="panel-body">
+      <form action="" method="post">{% csrf_token %}
+        <!-- Actions -->
+        <div class="form-group">
+          <div class="button-group">
+            <button type="submit" name="action" value="disable" class="btn btn-default {% if target.status.name != 'active' %}disabled{% endif %}">Disable</button>
+            <button type="submit" name="action" value="enable" class="btn btn-default {% if target.status.name != 'inactive' %}disabled{% endif %}">Enable</button>
+            <button type="submit" name="action" value="complete" class="btn btn-default {% if target.status.name != 'inactive' and target.status.name != 'active' %}disabled{% endif %}">Complete</button>
+            <button type="submit" name="action" value="restart" class="btn btn-default {% if target.status.name != 'completed' and target.status.name != 'archived' %}disabled{% endif %}">Restart</button>
+            <button type="submit" name="action" value="delete" class="btn btn-default">Delete</button>
+          </div>
+        </div>
+      </form>
+
+      {% if target.type != 'Fermi' and target.type != 'Swift' and target.type != 'LVC' %}
+        <form action="" method="post">{% csrf_token %}
+          <!-- Parameter editor -->
+          <div class="form-inline">
+            <div class="form-group">
+              <label>Coordinates:</label>
+              <input type="text" name="new-coords" class="form-control" placeholder="Coordinates or SIMBAD object name" value="{{ target.ra|floatformat:2 }} {{ target.dec|floatformat:2 }}">
+            </div>
+
+            <div class="form-group">
+              <label>Name:</label>
+              <input type="text" name="new-name" class="form-control" placeholder="Name for this target" value="{{ target.name }}">
+            </div>
+
+            <div class="form-group">
+              <label>Target type:</label>
+              <select class="form-control" name="new-type">
+                <option value="imaging"  {% if target.type == 'imaging' %}selected{% endif %}>Imaging</option>
+                <option value="widefield"  {% if target.type == 'widefield' %}selected{% endif %}>Widefield Imaging</option>
+                <option value="monitoring" {% if target.type == 'monitoring' %}selected{% endif %}>Monitoring</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Filter:</label>
+              <select class="form-control" name="new-filter">
+                <option {% if target.filter == 'Clear' %}selected{% endif %}>Clear</option>
+                <option {% if target.filter == 'B' %}selected{% endif %}>B</option>
+                <option {% if target.filter == 'V' %}selected{% endif %}>V</option>
+                <option {% if target.filter == 'R' %}selected{% endif %}>R</option>
+                <option {% if target.filter == 'Pol' %}selected{% endif %}>Pol</option>
+                <option {% if target.filter == 'B+Pol' %}selected{% endif %}>B+Pol</option>
+                <option {% if target.filter == 'V+Pol' %}selected{% endif %}>V+Pol</option>
+                <option {% if target.filter == 'R+Pol' %}selected{% endif %}>R+Pol</option>
+                <option {% if target.filter == 'BVR' %}selected{% endif %}>BVR</option>
+                <option {% if target.filter == 'BVR+Pol' %}selected{% endif %}>BVR+Pol</option>
+                <option {% if target.filter == 'BVR+Clear+Pol' %}selected{% endif %}>BVR+Clear+Pol</option>
+              </select>
+            </div>
+
+          </div>
+          <div class="form-inline">
+            <div class="form-group">
+              <label>Exposure:</label>
+              <input type="text" name="new-exposure" class="form-control" placeholder="Exposure in seconds" size=20 value="{{ target.exposure }}">
+            </div>
+
+            <div class="form-group">
+              <label>Repeat:</label>
+              <input type="text" name="new-repeat" class="form-control" placeholder="Number of exposures" size=10 value="{{ target.repeat }}">
+            </div>
+
+          </div>
+
+          <button type="submit" name="action" value="update" class="btn btn-default">Update target parameters</button
+
+        </form>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}

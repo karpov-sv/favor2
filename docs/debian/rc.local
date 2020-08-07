@@ -1,0 +1,29 @@
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+
+#rmmod /home/karpov/andor/bitflow/drv/bitflow.ko
+
+/sbin/modprobe v4l2_common
+#/sbin/modprobe v4l1_compat -- only include this line if your kernel version is below 2.6.38, use 'uname -a' to find out your kernel version
+/sbin/modprobe videodev
+/sbin/insmod /home/karpov/andor/bitflow/drv/bitflow.ko fwDelay1=200 customFlags=1
+#/sbin/insmod /home/karpov/andor/bitflow/drv/bitflow.ko fwDelay1=200
+
+sleep 1
+
+chmod a+rw /dev/video0
+
+supervisorctl restart channel
+
+exit 0

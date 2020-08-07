@@ -1,0 +1,27 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% block title %}Summary of Nights{% endblock %}
+
+{% block content %}
+
+{% if nights %}
+{% paginate 50 nights %}
+<table class="table table-striped table-condensed">
+  <tr><th>Night</th><th>Number of images</th></tr>
+  {% for night in nights %}
+  <tr>
+    <td><a href="/images/night/{{ night.night }}">{{ night.night }}</a></td>
+    <td>{{ night.nimages}} </td>
+  </tr>
+{% endfor %}
+</table>
+
+{% show_pages %}
+
+{% else %}
+<p>No data found </p>
+{% endif %}
+
+{% endblock %}

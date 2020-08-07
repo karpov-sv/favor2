@@ -1,0 +1,31 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% block ptitle %}Realtime : MMT Archive{% endblock %}
+
+{% block title %}Realtime Summary by Night{% endblock %}
+
+{% block content %}
+
+{% paginate 50 nights %}
+<table class="table table-striped">
+  <tr><th>Night</th><th>Number of objects</th><th></th></tr>
+  {% for night in nights %}
+  <tr>
+    <td><a href="/realtime/night/{{ night.night }}"><span class="glyphicon glyphicon-th-list"></span> {{ night.night }}</a></td>
+    <td>{{ night.nobjects}} </td>
+    <td>
+      <a href="/realtime/night/{{ night.night }}/flash"><span class="glyphicon glyphicon-star"></span> Flash</a>
+      <span> - </span>
+      <a href="/realtime/night/{{ night.night }}/moving"><span class="glyphicon glyphicon-plane"></span> Moving</a>
+      <span> - </span>
+      <a href="/realtime/night/{{ night.night }}/meteor"><span class="glyphicon glyphicon-flash"></span> Meteor</a>
+    </td>
+  </tr>
+{% endfor %}
+</table>
+
+{% show_pages %}
+
+{% endblock %}

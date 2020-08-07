@@ -1,0 +1,47 @@
+{% extends "template.html" %}
+
+{% block ptitle %}{{filename}} : MMT Archive{% endblock %}
+
+{% block title %}RAW image {{filename}}{% endblock %}
+
+{% block content %}
+
+<p><a href="/raw/{{ channel }}/{{ filename }}/full" title="Click for a full-size image"><img src="/raw/{{ channel }}/{{ filename }}/view" class="img-thumbnail center-block"></a></p>
+
+<p class="text-center">
+<a href="/raw/{{ channel }}/{{ filename }}/raw" title="Click for an unprocessed full-size image"><span class="glyphicon glyphicon-zoom-in"></span> Unprocessed image</a>
+<span> - </span>
+<a href="/raw/{{ channel }}/{{ filename }}/full" title="Click for a full-size image"><span class="glyphicon glyphicon-zoom-in"></span> Full-size image</a>
+<span> - </span>
+<a href="/raw/{{ channel }}/{{ filename }}/histogram" title="Click for an image histogram"><span class="glyphicon glyphicon-stats"></span> Image histogram</a>
+<span> - </span>
+<a href="/raw/{{ channel }}/{{ filename }}/slice" title="Click for an image slice"><span class="glyphicon glyphicon-move"></span> Image slice</a>
+<span> - </span>
+<a href="/raw/{{ channel }}/{{ filename }}/mosaic" title="Click for a mosaic from all channels"><span class="glyphicon glyphicon-th"></span> Mosaic</a>
+<span> - </span>
+<a href="{% url 'status_beholder' %}?time={{ time|date:"Y.m.d H:i:s"|urlencode }}" title="System status at that moment"><span class="glyphicon glyphicon-info-sign"></span> Status</a>
+<span> - </span>
+<a href="/raw/{{ channel }}/{{ filename }}" title="Click to download FITS "><span class="glyphicon glyphicon-floppy-disk"></span> Download FITS</a>
+</>
+
+<table class="table table-condensed table-striped">
+  <tr><td>Filename:</td><td colspan=2><a href="/raw/{{ channel }}/{{ filename }}">{{ filename }}</a></td></tr>
+  {% if avg %}
+    <tr><td>AVG:</td><td colspan=2><a href="{% url 'image' avg.id %}"">{{ avg.filename }}</a></td></tr>
+  {% endif %}
+  {% if survey %}
+    <tr><td>Survey:</td><td colspan=2><a href="{% url 'image' survey.id %}"">{{ survey.filename }}</a></td></tr>
+  {% endif %}
+  {% if dark %}
+    <tr><td>Dark:</td><td colspan=2><a href="{% url 'image' dark.id %}"">{{ dark.filename }}</a></td></tr>
+  {% endif %}
+  {% for kw in keywords %}
+  <tr>
+    <td>{{kw.key}}:</td>
+    <td>{{kw.value}}</td>
+    <td>{{kw.comment}}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

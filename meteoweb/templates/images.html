@@ -1,0 +1,39 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block title %}
+Images
+  {% if night %}
+  for night {{ night }}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if images_list %}
+{% paginate 10 images_list %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Id</th><th>Time</th><th>Exposure</th><th>Night</th><th>Preview</th>
+    {% for image in images_list %}
+  <tr>
+    <td><a href="/images/{{ image.id }}/" title="{{ image.filename }}">{{ image.id }}</a></td>
+    <td>{{ image.time|fromutc|date:"Y-m-d H:i:s" }}</td>
+    <td>{{ image.exposure }} </td>
+    <td><a href="/images/night/{{ image.night }}{% if type %}/{{ type }}{% endif %}">{{ image.night }}</td>
+    <td><a href="/images/{{ image.id }}/" title="{{ image.filename }}">
+        <img src="/images/{{ image.id }}/preview" class="img-thumbnail">
+    </a></td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% show_pages %}
+
+{% else %}
+<p>No images found </p>
+{% endif %}
+
+{% endblock %}

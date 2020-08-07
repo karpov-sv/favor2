@@ -1,0 +1,101 @@
+{% load endless %}
+{% load filters %}
+
+{% if should_paginate %}
+  {% paginate 10 satellites %}
+{% endif %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>ID</th>
+    <!-- <th>Cat ID</th> -->
+    <th title="International Designator">Int</th>
+    <th>Name</th>
+    <th>Type</th>
+    <th>Launched</th>
+    <th>Latest Track</th>
+    <th>Ntracks</th>
+    <th>Std.Mag</th>
+    <th>Variability</th>
+    <th title="Radar Cross-Section, sq.m.">RCS</th>
+    <th></th>
+  </tr>
+
+  {% for satellite in satellites %}
+    <tr>
+      <td><a href="{% url 'satellite_details' satellite.id %}">
+        {% if satellite.catalogue == 1 %}
+          <span class="glyphicon glyphicon-ok-sign"></span>
+        {% elif satellite.catalogue == 2 %}
+          <span class="glyphicon glyphicon-question-sign"></span>
+        {% else %}
+          <span class="glyphicon glyphicon-info-sign"></span>
+        {% endif %}
+        {{ satellite.catalogue_id }}</a>
+      </td>
+      <!-- <td>{{ satellite.catalogue_id }}</td> -->
+      <td>{{ satellite.iname|default_if_none:"" }}</td>
+      <td>{{ satellite.name }}
+
+        {% if satellite.comments %}
+          <span class="glyphicon glyphicon-comment" title="{{ satellite.comments }}"></span>
+        {% endif %}
+      </td>
+      <td>
+        <span title="{{ satellite.type|satellite_type }}">{{ satellite.type|satellite_type_short }}</span>
+      </td>
+      <td>{{ satellite.launch_date|date:"Y-m-d" }}{% if satellite.country != None %}{% if satellite.launch_date %} / {% endif %}{{ satellite.country }}{% endif %}</td>
+      <td>{{ satellite.time_last|date:"Y-m-d" }}</td>
+      <td>{{ satellite|satellite_ntracks }}</td>
+      <td>
+        {% if satellite|satellite_mean_stdmag:0 %}
+
+          <span {% if satellite|satellite_median_stdmag:0 %} title="Median = {{ satellite|satellite_median_stdmag:0|floatformat:2 }}, Min = {{ satellite|satellite_min_stdmag:0|floatformat:2 }}, Max = {{ satellite|satellite_max_stdmag:0|floatformat:2 }}"
+          {% endif %}>{{ satellite|satellite_mean_stdmag:0|floatformat:1 }}{% if satellite|satellite_mean_stdmag:0 %}  &plusmn; {% endif %}{{ satellite|satellite_stddev_stdmag:0|floatformat:1 }}</span>
+
+        {% elif satellite|satellite_mean_stdmag:1 %}
+
+          <span {% if satellite|satellite_median_stdmag:1 %} title="Median = {{ satellite|satellite_median_stdmag:1|floatformat:2 }}, Min = {{ satellite|satellite_min_stdmag:1|floatformat:2 }}, Max = {{ satellite|satellite_max_stdmag:1|floatformat:2 }}"
+          {% endif %}>B = {{ satellite|satellite_mean_stdmag:1|floatformat:1 }}{% if satellite|satellite_mean_stdmag:1 %}  &plusmn; {% endif %}{{ satellite|satellite_stddev_stdmag:1|floatformat:1 }}</span>
+
+        {% elif satellite|satellite_mean_stdmag:2 %}
+
+          <span {% if satellite|satellite_median_stdmag:2 %} title="Median = {{ satellite|satellite_median_stdmag:2|floatformat:2 }}, Min = {{ satellite|satellite_min_stdmag:2|floatformat:2 }}, Max = {{ satellite|satellite_max_stdmag:2|floatformat:2 }}"
+          {% endif %}>V = {{ satellite|satellite_mean_stdmag:2|floatformat:1 }}{% if satellite|satellite_mean_stdmag:2 %}  &plusmn; {% endif %}{{ satellite|satellite_stddev_stdmag:2|floatformat:1 }}</span>
+
+        {% elif satellite|satellite_mean_stdmag:3 %}
+
+          <span {% if satellite|satellite_median_stdmag:3 %} title="Median = {{ satellite|satellite_median_stdmag:3|floatformat:2 }}, Min = {{ satellite|satellite_min_stdmag:3|floatformat:2 }}, Max = {{ satellite|satellite_max_stdmag:3|floatformat:2 }}"
+          {% endif %}>R = {{ satellite|satellite_mean_stdmag:3|floatformat:1 }}{% if satellite|satellite_mean_stdmag:3 %}  &plusmn; {% endif %}{{ satellite|satellite_stddev_stdmag:3|floatformat:1 }}</span>
+
+        {% endif %}
+      </td>
+
+      <td>
+        {% if satellite.variability == 1 %}
+          <span class="text-default">Aperiodic</span>
+        {% elif satellite.variability == 2 %}
+          <span class="text-default">Period: {{ satellite.variability_period|floatformat:2 }} s</span>
+        {% else %}
+        {% endif %}
+      </td>
+      <td>
+        {{ satellite.rcs|default_if_none:""|floatformat:2 }}
+      </td>
+      <td>
+        <a href="{% url 'satellite_plot' satellite.id 'mag' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'mag' %}', 'Light curve');" title="Light curve">L</a>
+        <a href="{% url 'satellite_plot' satellite.id 'stdmag' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'stdmag' %}', 'Standard magnitudes');" title="Standard magnitudes">S</a>
+        <a href="{% url 'satellite_plot' satellite.id 'distance' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'distance' %}', 'Distances');" title="Distances">D</a>
+        <a href="{% url 'satellite_plot' satellite.id 'phase' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'phase' %}', 'Phases');" title="Phases">P</a>
+        <a href="{% url 'satellite_plot' satellite.id 'phase_stdmag' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'phase_stdmag' %}', 'Phase-Stdmag');" title="Phase-Stdmag">PS</a>
+        {% if satellite.variability == 2 %}
+          <a href="{% url 'satellite_plot' satellite.id 'period' %}" onclick="return popupImage(event, '{% url 'satellite_plot' satellite.id 'period' %}', 'Lightcurve periods');" title="Periods">P</a>
+        {% endif %}
+        <a href="{% url 'satellite_download' satellite.id %}" title="Downoad all tracks">T</a>
+      </td>
+    </tr>
+  {% endfor %}
+
+</table>
+{% if should_paginate %}
+  {% show_pages %}
+{% endif %}

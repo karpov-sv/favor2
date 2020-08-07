@@ -1,0 +1,65 @@
+{% extends "template.html" %}
+
+{% block ptitle %}Image {{image.id}} : MMT Archive{% endblock %}
+
+{% block title %}Image {{image.id}}{% endblock %}
+
+{% block content %}
+
+<p><a href="/images/{{ image.id }}/full" title="Click for a full-size image"><img src="/images/{{ image.id }}/view" class="img-thumbnail center-block"></a></p>
+
+<p class="text-center">
+<a href="/images/{{ image.id }}/full" title="Click for a full-size image"><span class="glyphicon glyphicon-zoom-in"></span> Full-size image</a>
+<span> - </span>
+<a href="/images/{{ image.id }}/raw" title="Click for an unprocessed full-size image"><span class="glyphicon glyphicon-eye-open"></span> Unprocessed image</a>
+<span> - </span>
+<a href="/images/{{ image.id }}/download" title="Click for an unprocessed FITS"><span class="glyphicon glyphicon-floppy-disk"></span> Download FITS</a>
+<span> - </span>
+<a href="/images/{{ image.id }}/download/processed" title="Click for a processed FITS"><span class="glyphicon glyphicon-floppy-disk"></span> Processed FITS</a>
+<span> - </span>
+<a href="/images/{{ image.id }}/histogram" title="Click for an image histogram"><span class="glyphicon glyphicon-stats"></span> Image histogram</a>
+<span> - </span>
+<a href="/images/{{ image.id }}/slice" title="Click for an image slice"><span class="glyphicon glyphicon-move"></span> Image slice</a>
+<span> - </span>
+<a href="/images/coords/{{ image.ra0 }}/{{ image.dec0 }}/5.0"><span class="glyphicon glyphicon-search"></span> Images in 5 degrees around</a>
+<span> - </span>
+<a href="{% url 'status_beholder' %}?time={{ image.time|date:"Y.m.d H:i:s"|urlencode }}" title="System status at that moment"><span class="glyphicon glyphicon-info-sign"></span> Status</a>
+</p>
+
+{% if 1 %}
+<p class="text-center">
+  DBG:
+  <a href="{% url 'survey_dbg_image' image.id %}">Pickles</a>
+  <span> - </span>
+  <a href="{% url 'survey_dbg_image' image.id %}?cat=apass">APASS</a>
+</p>
+{% endif %}
+
+<table class="table table-condensed table-striped">
+  <tr><td>Id:</td><td colspan=2>{{image.id}}</td></tr>
+  <tr><td>Channel Id:</td><td colspan=2>{{image.channel_id}}</td></tr>
+  <tr><td>Filename:</td><td colspan=2><a href="/images/{{ image.id }}/download" title="Download FITS"><span class="glyphicon glyphicon-floppy-disk"></span> {{ image.filename }}</a></td></tr>
+  <tr><td>Type:</td><td colspan=2><a href="/images/night/{{ image.night }}/{{ image.type }}">{{image.type}}</a></td></tr>
+  <tr><td>Time:</td><td colspan=2>{{image.time|date:"Y-m-d H:i:s"}} UT</td></tr>
+  <tr><td>Night:</td><td colspan=2><a href="/images/night/{{ image.night }}">{{image.night}}</a></td></tr>
+  <tr><td>RA:</td><td colspan=2>{{image.ra0}}</td></tr>
+  <tr><td>Dec:</td><td colspan=2>{{image.dec0}}</td>
+  </td></tr>
+  {% if dark %}<tr><td>Dark frame:</td><td colspan=2><a href="/images/{{ dark_id }}/" title="View image"><span class="glyphicon glyphicon-info-sign"></span> {{dark}}</a></td></tr>{% endif %}
+  {% if flat %}<tr><td>Flat frame:</td><td colspan=2><a href="/images/{{ flat_id }}/" title="View image"><span class="glyphicon glyphicon-info-sign"></span> {{flat}}</a></td></tr>{% endif %}
+  {% if keywords %}
+  {% for kw in keywords %}
+  <tr {% if kw.key|lower == 'exposure' or kw.key|lower == 'shutter' or kw.key|lower == 'filter' %}class='success'{% endif %}>
+    <td>{{kw.key}}:</td>
+    <td>{{kw.value}}</td>
+    <td>{{kw.comment}}</td>
+  </tr>
+  {% endfor %}
+  {% else %}
+  {% for key,value in image.keywords.items %}
+  <tr><td>{{key}}:</td><td colspan=2>{{value}}</td></tr>
+  {% endfor %}
+  {% endif %}
+</table>
+
+{% endblock %}

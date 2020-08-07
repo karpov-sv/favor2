@@ -1,0 +1,299 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% load filters %}
+
+{% block head %}
+<script language="javascript">
+$(function(){
+  $('#comment-text').autosize();
+});
+</script>
+{% endblock %}
+
+{% block ptitle %}Object {{ object.id }} : MMT Archive{% endblock %}
+
+{% block title %}Realtime object {{ object.id }}{% endblock %}
+
+{% block content %}
+
+<!-- Pager -->
+<ul class="pager">
+  {% if prev %}
+  <li class="previous"><a href="{% url 'realtime_object' prev %}"><span class="glyphicon glyphicon-backward"></span> Previous</a></li>
+  {% endif %}
+  {% if prev_state %}
+  <li class="previous"><a href="{% url 'realtime_object' prev_state %}"><span class="glyphicon glyphicon-backward"></span> Previous {{ object.state.name }}</a></li>
+  {% endif %}
+
+  {% if next %}
+  <li class="next"><a href="{% url 'realtime_object' next %}">Next <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+  {% if next_state %}
+  <li class="next"><a href="{% url 'realtime_object' next_state %}">Next {{ object.state.name }} <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+</ul>
+
+<!-- Object parameters -->
+<table class="table table-striped table-condensed">
+  <tr><td>Id:</td><td>{{ object.id }}</td></tr>
+  <tr><td>Night:</td><td><a href="{% url 'realtime_objects' object.night %}" title="All objects from this night">{{ object.night }}</a></td></tr>
+  <tr><td>Channel ID:</td><td>{{ object.channel_id }}</td></tr>
+  <tr><td>State:</td><td><a href="{% url 'realtime_objects' object.night %}/{{ object.state.name }}" title="All objects of this type from this night">{{ object.state.name }}</a></td></tr>
+  <tr><td>Length:</td><td>{{ object.nrecords }}</td></tr>
+  <tr><td>Start:</td><td>{{ object.time_start|date:"Y-m-d H:i:s.u" }} UT
+    - <a href="{% url 'status_beholder' %}?time={{ object.time_start|date:"Y.m.d H:i:s"|urlencode }}" title="System status at that moment">Status</a>
+    {% if avg_id %}
+      - <a href="{% url 'image' avg_id %}">AVG</a>
+    {% endif %}
+  </td></tr>
+  <tr><td>End:</td><td>{{ object.time_end|date:"Y-m-d H:i:s.u" }} UT
+    - <a href="{% url 'status_beholder' %}?time={{ object.time_start|date:"Y.m.d H:i:s"|urlencode }}" title="System status at that moment">Status</a>
+  </td></tr>
+  {% if object.state.name == 'flash' %}
+    <tr><td>Coordinates:</td><td>{{ object.realtimerecords_set.first.x | floatformat:2 }} {{ object.realtimerecords_set.first.y | floatformat:2 }}</td></tr>
+  {% endif %}
+  {% if object.params.classification %}
+  <tr><td>Classification:</td><td>{{ object.params.classification|linebreaks }}</td></tr>
+  {% endif %}
+  {% if object.params.related %}
+  <tr><td>Related objects:</td><td>
+      {% for id in related %}
+      <a href="{% url 'realtime_object' id %}">{{ id }}</a>
+      {% endfor %}
+  </td></tr>
+  {% endif %}
+</table>
+
+<!-- Comment -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#comment"><span class="glyphicon glyphicon-comment"></span> Comments</a>
+    </h4>
+  </div>
+  <div id="comment" class="panel-collapse collapse {% if object.realtimecomments_set.count %} in {% endif %}">
+    <div class="panel-body">
+      {% if perms.fweb.modify_data %}
+      <form action="" method="post" role="form">{% csrf_token %}
+        <div class="form-group">
+          <textarea class="form-control" name="comment" id="comment-text" rows="{{ object.realtimecomments_set.count|add:'1' }}">{% for comment in object.realtimecomments_set.all %}{{comment.comment }}{% endfor %}</textarea>
+        </div>
+        <button type="submit" class="btn btn-default" name="action" value="comment">{% if object.realtimecomments_set.count %} Update Comment {% else %} Add Comment {% endif %}</button>
+        <button type="submit" class="btn btn-default" name="action" value="comment-delete">Delete comment</button>
+      </form>
+      {% else %}
+      <pre>{% for comment in object.realtimecomments_set.all %}{{comment.comment }}{% endfor %}</pre>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Light curve -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lc-flux"><span class="glyphicon glyphicon-signal"></span> Light curve / Counts</a>
+    </h4>
+  </div>
+  <div id="lc-flux" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="/realtime/object/{{object.id}}/lightcurve" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Light curve / mags -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lc-mags"><span class="glyphicon glyphicon-stats"></span> Light curve / Magnitudes</a>
+    </h4>
+  </div>
+  <div id="lc-mags" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="/realtime/object/{{object.id}}/magnitudes" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Trajectory -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#map"><span class="glyphicon glyphicon-pushpin"></span> Trajectory</a>
+    </h4>
+  </div>
+  <div id="map" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="/realtime/object/{{object.id}}/map" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<a id="animation"></a>
+
+{% if processed %}
+<!-- Animation -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#anim"><span class="glyphicon glyphicon-facetime-video"></span> Animation</a>
+    </h4>
+  </div>
+  <div id="anim" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="/realtime/object/{{object.id}}/animation" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.fweb.modify_data %}
+<!-- Actions -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+    </h4>
+  </div>
+  <div id="actions" class="panel-collapse collapse">
+    <div class="panel-body">
+      <form action="" method="post">{% csrf_token %}
+        <div class="form-group">
+          <div class="button-group">
+            <button class="btn btn-default" type="submit" name="action" value="process">(Re)Process</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_1s">Process + 1 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_5s">Process + 5 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_10s">Process + 10 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="preview">Preview</button>
+            {% if object.state.name != 'particle' %}
+              <button class="btn btn-default" type="submit" name="action" value="change_state_particle">Mark as Particle</button>
+            {% endif %}
+            {% if object.state.name != 'misc' %}
+              <button class="btn btn-default" type="submit" name="action" value="change_state_misc">Mark as Misc</button>
+            {% endif %}
+            <button class="btn btn-default" type="submit" name="action" value="delete">Delete</button>
+            <button class="btn btn-default {% if not next_state %} disabled {% endif %}" type="submit" name="action" value="delete_and_next">Delete and show next {{ object.state.name }}</button>
+            <input type="hidden" name="next_state" value="{{ next_state }}">
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Pager -->
+<ul class="pager">
+  {% if prev %}
+  <li class="previous"><a href="{% url 'realtime_object' prev %}#animation"><span class="glyphicon glyphicon-backward"></span> Previous</a></li>
+  {% endif %}
+  {% if prev_state %}
+  <li class="previous"><a href="{% url 'realtime_object' prev_state %}#animation"><span class="glyphicon glyphicon-backward"></span> Previous {{ object.state.name }}</a></li>
+  {% endif %}
+
+  {% if next %}
+  <li class="next"><a href="{% url 'realtime_object' next %}#animation">Next <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+  {% if next_state %}
+  <li class="next"><a href="{% url 'realtime_object' next_state %}#animation">Next {{ object.state.name }} <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+</ul>
+
+{% if not request.GET.noframes %}
+
+{% if images %}
+
+<table class="table table-striped table-condensed">
+  <tr><th>Time, UT</th><th>x</th><th>y</th><th>a</th><th>b</th><th>Theta</th><th>Flux</th><th>RA</th><th>Dec</th><th>Filter</th><th>Mag</th><th>Flags</th><th>Preview</th><th></th></tr>
+  {% for image in images %}
+  <tr>
+    <!-- <td><a href="/realtime/object/{{ object.id }}">{{ object.id }}</a></td> -->
+    <td>
+      <span {% if not image.record.flux %} class="text-danger" {% endif %}>
+        {% if image.raw %}<a href="/raw/{{ object.channel_id }}/{{ image.raw }}/info" title="View frame">{% endif %}
+        {{ image.time|date:"Y-m-d H:i:s.u" }}
+        {% if image.raw %}</a>{% endif %}
+      </span>
+    </td>
+    <td>{{ image.record.x }}</td>
+    <td>{{ image.record.y }}</td>
+    <td>{{ image.record.a }}</td>
+    <td>{{ image.record.b }}</td>
+    <td>{{ image.record.theta }}</td>
+    <td>{{ image.record.flux }}</td>
+    <td>{{ image.record.ra }}</td>
+    <td>{{ image.record.dec }}</td>
+    <td>{{ image.record.filter.name }}</td>
+    <td>{{ image.record.mag }}</td>
+    <td>{{ image.record.flags|record_flags }}</td>
+    {% if image.id %}
+    <td><a href="/realtime/image/{{image.id}}/view" title="View subimage"><img src="/realtime/image/{{image.id}}/preview" class="img-thumbnail"></a></td>
+    <td><a href="/realtime/image/{{image.id}}/download" title="Download FITS"><span class="glyphicon glyphicon-floppy-disk"></span></a></td>
+    {% else %}
+    <td></td>
+    <td></td>
+    {% endif %}
+  </tr>
+{% endfor %}
+</table>
+
+{% else %}
+<p>No images found </p>
+{% endif %}
+
+{% if perms.fweb.modify_data %}
+<!-- Actions -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#actions2"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+    </h4>
+  </div>
+  <div id="actions2" class="panel-collapse collapse">
+    <div class="panel-body">
+      <form action="" method="post">{% csrf_token %}
+        <div class="form-group">
+          <div class="button-group">
+            <button class="btn btn-default" type="submit" name="action" value="process">(Re)Process</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_1s">Process + 1 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_5s">Process + 5 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="process_10s">Process + 10 s</button>
+            <button class="btn btn-default" type="submit" name="action" value="preview">Preview</button>
+            {% if object.state.name != 'particle' %}
+              <button class="btn btn-default" type="submit" name="action" value="change_state">Mark as Particle</button>
+              <input type="hidden" name="new_state" value="particle">
+            {% endif %}
+            <button class="btn btn-default" type="submit" name="action" value="delete">Delete</button>
+            <button class="btn btn-default {% if not next_state %} disabled {% endif %}" type="submit" name="action" value="delete_and_next">Delete and show next {{ object.state.name }}</button>
+            <input type="hidden" name="next_state" value="{{ next_state }}">
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Pager -->
+<ul class="pager">
+  {% if prev %}
+  <li class="previous"><a href="{% url 'realtime_object' prev %}"><span class="glyphicon glyphicon-backward"></span> Previous</a></li>
+  {% endif %}
+  {% if prev_state %}
+  <li class="previous"><a href="{% url 'realtime_object' prev_state %}"><span class="glyphicon glyphicon-backward"></span> Previous {{ object.state.name }}</a></li>
+  {% endif %}
+
+  {% if next %}
+  <li class="next"><a href="{% url 'realtime_object' next %}">Next <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+  {% if next_state %}
+  <li class="next"><a href="{% url 'realtime_object' next_state %}">Next {{ object.state.name }} <span class="glyphicon glyphicon-forward"></span></a></li>
+  {% endif %}
+</ul>
+
+{% endif %}
+
+{% endblock %}

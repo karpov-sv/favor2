@@ -1,0 +1,84 @@
+# Root part
+
+apt-get update
+
+apt-get -y install sudo joe subversion libpam0g-dev libxslt1-dev libxml2-dev libedit-dev xutils-dev liblua5.2-dev libpq-dev libglib2.0-dev libcfitsio3-dev libjpeg8-dev libgsl0-dev python-django ipython python-pip python-twisted-web screen gdb python-psycopg2 postgresql-server-dev-9.3 rsync libapache2-mod-wsgi python-django python-psycopg2 python-pip python-matplotlib python-pyfits python-pywcs supervisor netpbm sextractor swarp libgoogle-perftools-dev imagemagick python-dev ntfs-3g htop strace python-amqp celeryd rabbitmq-server python-mpltoolkits.basemap python-sqlalchemy
+
+apt-get remove python-librabbitmq
+
+pip install django-endless-pagination django-hstore pghstore pyephem flower
+pip install pandas
+pip install patsy
+pip install statsmodels
+pip install esutil
+pip install scikit-learn
+pip install astropy astroquery
+
+echo "karpov          ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+dpkg -i 3.9/*
+
+apt-get -y -f install
+
+# User part
+
+svn co --username karpov --password S0G00d@sP0ssible https://svn.parallax.ru:443/mmtr/favor2
+
+cd favor2
+
+sudo cp docs/debian/favor2.conf /etc/apache2/sites-enabled/
+sudo rm /etc/apache2/sites-enabled/000-default.conf
+sudo a2enmod proxy_http
+sudo apachectl restart
+
+sudo joe /etc/postgresql/9.3/main/pg_hba.conf
+
+sudo /etc/init.d/postgresql restart
+
+sudo su - postgres -c "createuser -s karpov"
+
+sudo cp docs/debian/grub /etc/default/
+sudo update-grub
+
+sudo reboot
+
+sudo cp docs/debian/ld.so.conf.d/andor_sdk.conf /etc/ld.so.conf.d/
+sudo cp docs/debian/rc.local /etc/
+
+cd deps
+tar xzvf q3c_1.4.19.tar.gz
+cd q3c-1.4.19/
+make
+sudo make install
+cd ..
+tar xjvf astrometry.net-0.43.tar.bz2
+cd astrometry.net-0.43/
+make -j8
+sudo make install
+cd ../..
+
+ln -s /usr/local/astrometry .
+
+sudo chmod 777 /.2
+mkdir /.2/IMG /.2/AVG /.2/ARCHIVE
+ln -s /.2/IMG .
+ln -s /.2/AVG .
+ln -s /.2/ARCHIVE .
+
+sudo cp docs/debian/channel-supervisord.conf /etc/supervisor/conf.d/
+
+
+sudo scp -r 192.168.16.143:/usr/local/astrometry/data/* /usr/local/astrometry/data/
+
+scp -r 192.168.16.143:favor2/db/Tycho-2/data db/Tycho-2/data
+
+cd db
+sh make_db.sh
+cd Tycho-2
+sh dump.sh
+
+
+dropdb favor2web
+createdb favor2web
+./fweb.py syncdb
+./fweb.py defaultusers

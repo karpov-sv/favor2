@@ -1,0 +1,75 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% load filters %}
+
+{% block ptitle %}{{ transient.id }} : Survey Transients : MMT Archive{% endblock %}
+
+{% block title %}Survey transient {{ transient.id }}{% endblock %}
+
+{% block content %}
+
+<table class="table table-striped table-condensed">
+  <tr><td>Id:</td><td>{{ transient.id }}</td></tr>
+  <tr><td>Frame:</td><td><a href="{% url 'image' transient.frame_id %}" title="View image details"><span class="glyphicon glyphicon-picture"></span> {{ transient.frame_id }}</a>  x={{ transient.x|floatformat:1 }} y={{ transient.y|floatformat:1 }} SN={% widthratio transient.flux transient.flux_err 1 %}</td></tr>
+  <tr><td>Night:</td><td><a href="{% url 'night_summary' transient.night %}" title="Summary of the night">{{ transient.night }}</a></td></tr>
+  <tr><td>Time:</td><td>{{ transient.time|date:"Y-m-d H:i:s" }}</td></tr>
+  <tr><td>RA/Dec (degrees):</td><td>
+    {{ transient.ra|floatformat:3 }} {{ transient.dec|floatformat:3 }}
+    <span class="pull-right">
+      <a href="https://www.aavso.org/vsx/index.php?view=results.get&coords={{ transient.ra }}+{{ transient.dec }}&format=d&size=60&unit=3" title="Check AAVSO VSX for this position">AAVSO</a>
+      -
+      <a href="http://vo.imcce.fr/webservices/skybot/conesearch?-objFilter=111&-mime=html&SR=0.0833333333333&EPOCH={{ transient.time|date:"c" }}&VERB=3&RA={{ transient.ra }}&DEC={{ transient.dec }}" title="Check SkyBoT for this position">SkyBoT</a>
+    </span>
+  </td>
+  <tr><td>RA/Dec (hours):</td><td>{{ transient.ra|to_sexadecimal_hours }} {{ transient.dec|to_sexadecimal_plus }}</td>
+    <tr><td>SIMBAD:</td><td>
+      {% if transient.simbad %}
+        <span title="{{ transient.simbad }}">{{ transient.simbad|split:", "|join:"<br>" }}</span>
+      {% endif %}
+    </td></tr>
+    <tr><td>MPC:</td><td>
+      {% if transient.mpc %}
+        <span title="{{ transient.mpc }}">{{ transient.mpc|split:", "|join:"<br>" }}</span>
+      {% endif %}
+    </td></tr>
+</table>
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#image"><span class="glyphicon glyphicon-facetime-video"></span> Detection frame</a>
+    </h4>
+  </div>
+  <div id="image" class="panel-collapse">
+    <div class="panel-body">
+      <a href="{% url 'survey_info_coords' transient.ra transient.dec 0.2 %}"><img src="{% url 'survey_transient_image' transient.id %}" class="img-responsive center-block"></a>
+    </div>
+  </div>
+</div>
+
+<h3>Survey images for {{ days }} days and in {{ sr }} deg around</h3>
+<div class="pull-right">
+  <a href="?{{ request.GET|GET_remove:"days"|GET_append:"days=1"|GET_urlencode }}">1 day</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"days"|GET_append:"days=2"|GET_urlencode }}">2 days</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"days"|GET_append:"days=5"|GET_urlencode }}">5 days</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"days"|GET_append:"days=10"|GET_urlencode }}">10 days</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"days"|GET_append:"days=30"|GET_urlencode }}">30 days</a>
+</div>
+<div class="clearfix"></div>
+<div class="pull-right">
+  <a href="?{{ request.GET|GET_remove:"sr"|GET_append:"sr=0.1"|GET_urlencode }}">0.1 deg</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"sr"|GET_append:"sr=0.2"|GET_urlencode }}">0.2 deg</a>
+  -
+  <a href="?{{ request.GET|GET_remove:"sr"|GET_append:"sr=0.4"|GET_urlencode }}">0.4 deg</a>
+</div>
+
+{% include 'survey_block_subimages.html' with ra=transient.ra dec=transient.dec sr=sr %}
+
+{% endblock %}

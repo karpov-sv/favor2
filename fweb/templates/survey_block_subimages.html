@@ -1,0 +1,25 @@
+{% load endless %}
+{% load filters %}
+
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Id</th>
+    <th>Time, UT</th>
+    <th>Night</th>
+    <th>Filter</th>
+    <th>Channel</th>
+    <th></th>
+  </tr>
+  {% for image in images %}
+    <tr>
+      <td><a href="{% url 'image' image.id %}" title="View image details"><span class="glyphicon glyphicon-picture"></span> {{ image.id }}</a></td>
+      <td>{{ image.time|date:"Y-m-d H:i:s" }}</td>
+      <td><a href="{% url 'night_summary' image.night %}">{{ image.night }}</a></td>
+      <td>{{ image.filter_string }}</td>
+      <td>{{ image.channel_id }}</td>
+      <td><a href="{% url 'survey_image_download' image.id ra dec sr %}" title="Download image crop">
+        <img src="{% url 'survey_image' image.id ra dec sr %}" class="img-thumbnail">
+      </a></td>
+    </tr>
+  {% endfor %}
+</table>

@@ -1,0 +1,174 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "popup_image.html" %}
+{% endblock %}
+
+{% block ptitle %}{% if night and night != 'all' %}{{ night }} : {% endif %}Meteors : MMT Archive{% endblock %}
+
+{% block title %}
+  Meteors detected by MMT
+  {% if night and night != 'all' %}
+    on night
+    {% if perms.fweb.access_realtime %}
+      <a href="{% url 'night_summary' night %}">{{ night }}</a>
+    {% else %}
+      {{ night }}
+    {% endif %}
+  {% endif %}
+  : {{ meteors.count }} objects
+{% endblock %}
+
+{% block content %}
+
+  <!-- Pager -->
+  <ul class="pager">
+    {% if night_prev %}
+      <li class="previous"><a href="{% url 'meteors_list' night_prev.night %}"><span class="glyphicon glyphicon-backward"></span> {{ night_prev.night }}</a></li>
+    {% endif %}
+
+    {% if night_next %}
+      <li class="next"><a href="{% url 'meteors_list' night_next.night %}">{{ night_next.night }} <span class="glyphicon glyphicon-forward"></span></a></li>
+    {% endif %}
+  </ul>
+
+  {% if other_years_nights %}
+    <div>
+      <ul class="list-inline">
+        <li>Other years:</li>
+        {% for pn in other_years_nights %}
+          <li>
+            <a href="{% url 'meteors_list' pn.night %}">{{ pn.night }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <!-- Radiants -->
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#meteors-intersect"><span class="glyphicon glyphicon-flash"></span> Meteor radiants</a>
+      </h4>
+    </div>
+    <div id="meteors-intersect" class="panel-collapse collapse in">
+      <img src="{% url 'meteors_radiants' night %}" class="img-responsive center-block">
+    </div>
+  </div>
+
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#meteors-showers"><span class="glyphicon glyphicon-flash"></span>
+          Showers active around solar longitude {{ solar_lon|floatformat:1 }}
+        </a>
+      </h4>
+    </div>
+    <div id="meteors-showers" class="panel-collapse collapse">
+      <table class="table table-striped table-condensed">
+        <tr><th>IAU Code</th><th>Name</th><th>RA</th><th>Dec</th><th>Solar Longitude</th><th>Status</th></tr>
+        {% for shower in showers %}
+          <tr>
+            <td>
+              <a href="{% url 'meteors_map' night shower.ra shower.dec %}" title="Sky Map" onclick="return popupImage(event, '{% url 'meteors_map' night shower.ra shower.dec %}', 'Sky Map for {{ shower.name }} on {{ night }}', true);">
+                {{ shower.iaucode }}
+              </a></td>
+            <td>{{ shower.name }}</td>
+            <td>{{ shower.ra }}</td>
+            <td>{{ shower.dec }}</td>
+            <td>{{ shower.solar_lon }}</td>
+            <td>{{ shower.status }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <!-- Meteors -->
+  <table class="table table-striped table-condensed">
+    <tr>
+      <th>Id</th>
+      <th>Time</th>
+      <th>Nframes</th>
+      <th>Mag<br>min</th>
+      <th>RA<br>start</th>
+      <th>Dec<br>start</th>
+      <th>RA<br>end</th>
+      <th>Dec<br>end</th>
+      <th>Z</th>
+      <th>Angular<br>Velocity</th>
+      <th></th>
+    </tr>
+
+    {% for meteor in meteors %}
+      <tr>
+
+        <td><a href="{% url 'meteor_details' meteor.id %}">{{ meteor.id }}</a></td>
+        <td>{{ meteor.time|date:"Y-m-d H:i:s.u" }}</td>
+        <td>{{ meteor.nframes }}</td>
+        <td>{% if meteor.mag_calibrated %}{{ meteor.mag_min|floatformat:1 }} / {{ meteor.filter }}{% endif %}</td>
+        <td>{{ meteor.ra_start|floatformat:3 }}</td>
+        <td>{{ meteor.dec_start|floatformat:3 }}</td>
+        <td>{{ meteor.ra_end|floatformat:3 }}</td>
+        <td>{{ meteor.dec_end|floatformat:3 }}</td>
+        <td>{{ meteor.z|floatformat:1 }}</td>
+        <td>{% if meteor.ang_vel %}{{ meteor.ang_vel|floatformat:1 }}{% endif %}</td>
+        <td>
+
+          <a href="{% url 'realtime_object_animation' meteor.id %}" title="Animation" onclick="return popupImage(event, '{% url 'realtime_object_animation' meteor.id %}', 'Animation of meteor {{ meteor.id }}', true);">
+            A
+          </a>
+
+          <a href="{% url 'meteor_plot' meteor.id 'mask' %}" title="Detection mask" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'mask' %}', 'Detection mask of meteor {{ meteor.id }}', true);">
+            M
+          </a>
+
+          <a href="{% url 'meteor_plot' meteor.id 'map' %}" title="Sky map" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'map' %}', 'Sky Map of meteor {{ meteor.id }}', true);">
+            S
+          </a>
+
+          <a href="{% url 'meteor_plot' meteor.id 'a_time' %}" title="Velocity plot" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'a_time' %}', 'Velocity plot of meteor {{ meteor.id }}', true);">
+            V
+          </a>
+
+          <a href="{% url 'meteor_plot' meteor.id 'profile' %}" title="Track profile plot" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'profile' %}', 'Track profile of meteor {{ meteor.id }}', true);">
+            P
+          </a>
+
+          {% if meteor.mag_calibrated %}
+            <a href="{% url 'meteor_plot' meteor.id 'lc_mag' %}" title="Light curve, magnitudes" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'lc_mag' %}', 'Light curve of meteor {{ meteor.id }}, magnitudes', true);">
+              M
+            </a>
+          {% else %}
+            <a href="{% url 'meteor_plot' meteor.id 'lc_flux' %}" title="Light curve" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'lc_flux' %}', 'Light curve of meteor {{ meteor.id }}', true);">
+              L
+            </a>
+          {% endif %}
+
+          {% if meteor.filter == 'R' %}
+            <a href="{% url 'meteor_plot' meteor.id 'lc_mags' %}" title="Multicolor light curve" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'lc_mags' %}', 'Light curve of meteor {{ meteor.id }}, magnitudes', true);">
+              BVR
+            </a>
+            <a href="{% url 'meteor_plot' meteor.id 'lc_colors' %}" title="Colors" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'lc_colors' %}', 'Colors of meteor {{ meteor.id }}', true);">
+              C
+            </a>
+          {% endif %}
+
+          {% if perms.fweb.access_realtime %}
+            <a href="{% url 'realtime_object' meteor.id %}" title="Realtime Object">R</a>
+          {% endif %}
+          |
+          <a href="{% url 'meteor_download_track' meteor.id %}" title="Download meteor track">D</a>
+
+        </td>
+
+      </tr>
+    {% endfor %}
+
+  </table>
+
+{% endblock %}

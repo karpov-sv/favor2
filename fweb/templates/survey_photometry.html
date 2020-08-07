@@ -1,0 +1,92 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% load filters %}
+
+{% block ptitle %}Photometry : MMT Archive{% endblock %}
+
+{% block title-div %}
+{% endblock %}
+
+{% block title %}Photometry
+  {% if name or ra or dec %}
+    : ({{ ra|floatformat:4 }}, {{dec|floatformat:4}}), SR={{ sr|floatformat:3 }}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+  <div class="text-center">
+
+    <form class="form-inline" role="form" action="" method="post">{% csrf_token %}
+
+      <div class="form-group">
+        <label for="coords">Coordinates:</label>
+        <input type="text" class="form-control" id="coords" name="coords" placeholder="Coordinates or SIMBAD object name" size=40 value="{{ coords }}">
+      </div>
+      <div class="form-group">
+        <label for="sr">Radius:</label>
+        <input type="text" class="form-control" id="sr" name="sr" value="{{ sr }}" size=3 placeholder="Radius, degrees">
+      </div>
+      <div class="form-group">
+        <label for="bv">B-V:</label>
+        <input type="text" class="form-control" id="bv" name="bv" value="{{ bv }}" size=3 placeholder="auto">
+      </div>
+      <div class="form-group">
+        <label for="vr">V-R:</label>
+        <input type="text" class="form-control" id="vr" name="vr" value="{{ vr }}" size=3 placeholder="auto">
+      </div>
+      <div class="form-group">
+        <label for="period">P:</label>
+        <input type="text" class="form-control" id="period" name="period" value="{{ period }}" size=8 placeholder="Period, days">
+      </div>
+      <button type="submit" class="btn btn-default">Search</button>
+    </form>
+
+  </div>
+
+  {% if name or ra or dec %}
+    <img src="{% url 'survey_lightcurve' ra dec sr %}?{% if bv %}&bv={{ bv }}{% endif %}{% if vr %}&vr={{ vr }}{% endif %}{% if period %}&P={{ period }}{% endif %}" class="img-responsive center-block" alt="Light curve">
+
+    <div>
+      <a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident={{ ra }}+{{ dec }}&submit=SIMBAD+search" title="Check SIMBAD for this position">SIMBAD</a>
+      -
+      <a href="https://www.aavso.org/vsx/index.php?view=results.get&coords={{ ra }}+{{ dec }}&format=d&size=60&unit=3" title="Check AAVSO VSX for this position">AAVSO</a>
+      -
+      <a href="http://skydot.lanl.gov/nsvs/cone_search.php?ra={{ ra }}&dec={{ dec }}&rad=0.5&saturated=on&nocorr=on&lonpts=on&hiscat=on&hicorr=on&hisigcorr=on&radecflip=on" title="NSVS data for this point">NSVS</a>
+      -
+      <a href="http://aladin.u-strasbg.fr/AladinLite/?target={{ ra }}%20{{ dec }}&fov=0.40&survey=P%2FDSS2%2Fcolor" title="Aladin Lite">Aladin</a>
+    </div>
+  {% else %}
+    <div class="help-block">
+      <h3>Survey photometry</h3>
+      <p>
+        During its routine operation, MMT acquires "survey" images with 60-s exposures in white light before and after the monitoring of a sky field. In this way, every field is observed twice in approximately 15 minutes with a limit of approximately V=14.5 mag, and it is repeated up to several times every night. As a result, we have hundreds of survey images covering every point of a northern sky since August 2014.
+      </p>
+      <p>
+        These images have been processed with <a href="https://github.com/karpov-sv/extract">custom PSF-fitting code</a> and the photometry is being calibrated now.  The white light sensitivity of the MMT detectors is a wide band with sensitivity peaked between 4500 and 7500 AA. The calibration process, as we hope, will allow us to derive the photometry in standard V filter by combining hundreds of measurements for every star acquired on different airmasses and with different extinctions.
+      </p>
+      <p>
+        Preliminary photometry may be accessed using the form above.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if best_image %}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h4 class="panel-title">
+          <a data-toggle="collapse" href="#image"><span class="glyphicon glyphicon-facetime-video"></span> Best quality frame</a>
+        </h4>
+      </div>
+      <div id="image" class="panel-collapse">
+        <div class="panel-body">
+          <a href="{% url 'survey_info_coords' ra dec 0.1 %}?filter=2" title="View all survey images"><img src="{% url 'survey_image' best_image ra dec 0.2 %}" class="img-responsive center-block"></a>
+          <a href="{% url 'survey_image_download' best_image ra dec 0.2 %}" title="Download image crop">Download this image</a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+{% endblock %}

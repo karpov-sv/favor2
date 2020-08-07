@@ -1,0 +1,141 @@
+{% extends "template.html" %}
+
+{% block head %}
+
+{% if task.state != 'SUCCESS' and task.state != 'FAILURE' %}
+
+<script type="text/javascript">
+$(document).ready(function(){
+setTimeout($.proxy(location.reload, location, true), 20000);
+});
+</script>
+
+{% endif %}
+
+{% endblock %}
+
+{% block ptitle %}
+{% if task %}
+Task ({{ task.state }}) : MMT Archive
+{% else %}
+Tasks {% if tasks|length %}({{ tasks|length }}) {% endif %}: MMT Archive
+{% endif %}
+{% endblock %}
+
+{% block title %}Task information{% endblock %}
+
+{% block content %}
+
+{% if task %}
+
+<table class='table table-striped table-condensed'>
+  <tr><td>ID:</td><td>{{ task.id }}</td></tr>
+  <tr><td>State:</td><td><span {% if task.state == 'SUCCESS' %}class="text-success"{% elif task.state == 'FAILURE'%}class="text-danger"{% elif task.state == 'STARTED' %}class="text-primary"{% endif %}>{{ task.state }}</span></td></tr>
+  {% if meta.date_done %}
+  <tr><td>{% if task.state == 'STARTED' %}Started:{% else %}Finished:{% endif %}</td><td>{{ meta.date_done|date:"Y-m-d H:i:s" }} UT</td></tr>
+  {% endif %}
+  {% if task.result and not formatted %}
+  <tr><td>{% if task.state == 'STARTED' %}Details:{% else %}Result:{% endif %}</td><td>{{ task.result|linebreaks }}</td></tr>
+  {% endif %}
+  {% if task.traceback %}
+  <tr><td>Traceback:</td><td>{{ task.traceback|linebreaks }}</td></tr>
+  {% endif %}
+</table>
+
+{% if formatted %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#result"><span class="glyphicon glyphicon-th-list"></span> Result</a>
+    </h4>
+  </div>
+  <div id="result" class="panel-collapse collapse in">
+
+    {{ formatted|safe }}
+
+  </div>
+</div>
+
+{% endif %}
+
+{% if perms.fweb.manage_tasks %}
+<!-- Actions -->
+  <form action="" method="post" role="form">{% csrf_token %}
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h4 class="panel-title">
+          <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+        </h4>
+      </div>
+      <div id="actions" class="panel-collapse collapse">
+        <div class="panel-body">
+          <form action="" method="post">{% csrf_token %}
+            <div class="form-group">
+              <div class="button-group">
+                <button class="btn btn-default" type="submit" name="action" value="terminatetask">Terminate</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </form>
+
+{% endif %}
+
+
+{% else %}
+
+<table class='table table-striped table-condensed'>
+  <tr>
+    <th>ID</th><th>State</th><th>Task</th><th>Hostname</th><th>Details</th>
+  </tr>
+  {% for task in tasks %}
+  <tr>
+    <td><a href="/tasks/{{ task.id }}">{{ task.id }}</a></td>
+    <td>{{ task.state }}</td>
+    <td>{{ task.shortname }}</td>
+    <td>{{ task.hostname }}</td>
+    <td>
+      {% if task.args != "[]" %}{{ task.args }}{% endif %}
+      {% if task.kwargs != "{}" %}{{ task.kwargs }}{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if perms.fweb.manage_tasks %}
+<!-- Actions -->
+  <form action="" method="post" role="form">{% csrf_token %}
+
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h4 class="panel-title">
+          <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+        </h4>
+      </div>
+      <div id="actions" class="panel-collapse collapse">
+        <div class="panel-body">
+          <form action="" method="post">{% csrf_token %}
+            <div class="form-group">
+              <div class="button-group">
+                <button class="btn btn-default" type="submit" name="action" value="terminatealltasks">Terminate All</button>
+                <button class="btn btn-default" type="submit" name="action" value="processall">Process All</button>
+                <button class="btn btn-default" type="submit" name="action" value="extractstars">Extract Stars</button>
+                <button class="btn btn-default" type="submit" name="action" value="findtransients">Find Transients</button>
+                <button class="btn btn-default" type="submit" name="action" value="uploadsatellites">Upload Satellites</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </form>
+
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "template.html" %}
+
+{% load filters %}
+
+{% block ptitle %}Environment : MMT Archive{% endblock %}
+
+{% block title %}System Environment:
+  {{ hours }} hours interval{% if delay %}, {{ delay }} hours from now{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="pull-right">
+  <a href="{% url "status_beholder" %}">System status visualization</a>
+</div>
+
+<!-- Interval -->
+<div class="pagination">
+  <div class="btn-group">
+    <a class="btn btn-default btn-sm" href="/status/{{ hours }}/{{ delay|add:hours }}" title="{{ hours }} hours earlier"> << </a>
+  </div>
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Interval:</span>
+    {% for int in hours_list %}
+    <a class="btn btn-default btn-sm {% if hours == int %} disabled {% endif %}" href="/status/{{ int }}/{{ delay }}">{{ int }}</a>
+    {% endfor %}
+    <span class="btn btn-default btn-sm disabled">hours</span>
+  </div>
+  <div class="btn-group">
+    <a class="btn btn-default btn-sm {% if hours > delay %} disabled {% endif %}" href="/status/{{ hours }}/{{ delay|subtract:hours }}" title="{{ hours }} hours later"> >> </a>
+  </div>
+</div>
+
+<!-- Andor -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#andor"><span class="glyphicon glyphicon-camera"></span> Andor camera</a>
+    </h4>
+  </div>
+  <div id="andor" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="{% url 'status_channels_plot' 'andor_temperature' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_channels_plot' 'hw_camera' hours delay %}" class="img img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Temperatures -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#temp"><span class="glyphicon glyphicon-fire"></span> Temperatures</a>
+    </h4>
+  </div>
+  <div id="temp" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'status_channels_plot' 'hw_celostate_temperature' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_channels_plot' 'hw_camera_temperature' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_can_plot' 't_cold' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_can_plot' 't_hot' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_custom_plot' 'weather_ambient_temp' hours delay %}" class="img img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Humidity -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#humidity"><span class="glyphicon glyphicon-tint"></span> Humidity</a>
+    </h4>
+  </div>
+  <div id="humidity" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'status_channels_plot' 'hw_celostate_humidity' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_channels_plot' 'hw_camera_humidity' hours delay %}" class="img img-responsive center-block">
+      <img src="{% url 'status_custom_plot' 'weather_humidity' hours delay %}" class="img img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+{% endblock %}

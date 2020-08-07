@@ -1,0 +1,137 @@
+{% extends "template.html" %}
+
+{% block ptitle %}RAW data : MMT Archive{% endblock %}
+
+{% block title %}RAW data
+{% if channel > 0 %}
+for channel {{ channel }}
+{% endif %}
+{% if raw_dir %}
+in {{ dir }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if channel_list %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Channel:</span>
+    {% for id in channel_list %}
+    <a class="btn btn-default btn-sm {% if id == channel %} disabled {% endif %}" href="/raw/{{ id }}">{{ id }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if not channel %}
+  <div>
+    Please select the channel from the list above
+  </div>
+{% else %}
+
+<div>
+<p class="text-right">Available: {{free|filesizeformat}} of {{total|filesizeformat}}</p>
+</div>
+
+{% if raw_list %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Data directory</th>
+    <th>Nfiles</th>
+    <th>Filter</th>
+    <th>Cover</th>
+    <th>Lamp</th>
+    <th>Focus</th>
+    <th>Celostate</th>
+    <th></th>
+    <th>RA</th>
+    <th>Dec</th>
+    <th></th>
+  </tr>
+  {% for raw in raw_list %}
+  {% if raw.is_new %}
+  <tr style="border-top: 2px solid black">
+  {% else %}
+  <tr>
+  {% endif %}
+    <td><a href="/raw/{{ channel }}/{{ raw.path }}/"><span class="glyphicon glyphicon-folder-open"> {{ raw.path }}</a></td>
+    {% if raw.first %}
+    <td>{{ raw.length }}</td>
+    <td>{{ raw.first.filter }}</td>
+    <td>{{ raw.first.cover }}</td>
+    <td>{{ raw.first.lamp }}</td>
+    <td>{{ raw.first.focus }}</td>
+    <td>{{ raw.first.pos0 }} x {{ raw.first.pos1 }}</td>
+    <td>{{ raw.first.wcs }}</td>
+    <td>{{ raw.first.ra }}</td>
+    <td>{{ raw.first.dec }}</td>
+    <td><a href="/raw/{{ channel }}/{{ raw.path }}/{{ raw.first.path }}/info" title="Show first image"><span class="glyphicon glyphicon-picture"></span></a></td>
+    {% else %}
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+{% elif raw_dir %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Filename</th>
+    {% if has_index %}
+    <th>Filter</th>
+    <th>Cover</th>
+    <th>Lamp</th>
+    <th>Focus</th>
+    <th>Celostate</th>
+    <th></th>
+    <th>RA</th>
+    <th>Dec</th>
+    {% endif %}
+    <th></th>
+    <th></th>
+    {% if request.GET.preview or request.GET.view %}
+    <th></th>
+    {% endif %}
+    {% for raw in raw_dir %}
+  <tr>
+    <td>
+      <a href="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/info"><span class="glyphicon glyphicon-picture"></span> {{ raw.path }}</a>
+    </td>
+    {% if has_index %}
+    <td>{{ raw.filter }}</td>
+    <td>{{ raw.cover }}</td>
+    <td>{{ raw.lamp }}</td>
+    <td>{{ raw.focus }}</td>
+    <td>{{ raw.pos0 }} x {{ raw.pos1 }}</td>
+    <td>{{ raw.wcs }}</td>
+    <td>{{ raw.ra }}</td>
+    <td>{{ raw.dec }}</td>
+    {% else %}
+    {% endif %}
+    <td><a href="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/full" title="View image"><span class="glyphicon glyphicon-eye-open"></span></a></td>
+    <td><a href="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}" title="Download FITS"><span class="glyphicon glyphicon-floppy-disk"></span></a></td>
+    {% if request.GET.preview %}
+    <td><a href="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/info" title="View image info"><img src="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/preview" class="img-thumbnail center-block"></a></td>
+    {% elif request.GET.view %}
+    <td><a href="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/info" title="View image info"><img src="/raw/{{ channel }}/{{ dir }}/{{ raw.path}}/view" class="img-thumbnail center-block"></a></td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+
+{% else %}
+    <p>No RAW data available.</p>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

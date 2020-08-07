@@ -1,0 +1,167 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "popup_image.html" %}
+{% endblock %}
+
+{% block ptitle %}Meteor {{ meteor.id }} : MMT Archive{% endblock %}
+
+{% block title %}
+  Meteor {{ meteor.id }}
+{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+    <div class="col-sm-6">
+
+      <table class="table table-striped table-condensed">
+        <tr><td>Id:</td><td>{{ meteor.id }}</td></tr>
+        <tr><td>Night:</td><td><a href="{% url 'meteors_list' meteor.night %}" title="All meteors from this night">{{ meteor.night }}</a></td></tr>
+        <tr><td>Channel ID:</td><td>{{ meteor.channel_id }}{% if meteor.filter != 'Clear' %} / {{ meteor.filter }}{% endif %}</td></tr>
+        <tr><td>Length, frames:</td><td>{{ meteor.nframes }}</td></tr>
+        {% if perms.fweb.access_realtime %}
+          <tr><td>Realtime Object:</td><td><a href="{% url 'realtime_object' meteor.id %}" title="Realtime object">{{ meteor.id }}</a></td></tr>
+        {% endif %}
+        {% if channels %}
+          <tr><td>Other channels:</td><td>
+            {% for channel in channels %}
+              <a href="{% url 'realtime_object_animation' meteor.id %}?channel_id={{ channel.id }}" title="Animation" onclick="return popupImage(event, '{% url 'realtime_object_animation' meteor.id %}?channel_id={{ channel.id }}', 'Animation of meteor {{ meteor.id }} in channel {{ channel.id }}:{{ channel.filter }}', true);">
+                {{ channel.id }}:{{ channel.filter }}
+              </a>
+            {% endfor %}
+          </td></tr>
+        {% endif %}
+
+      </table>
+
+    </div>
+    <div class="col-sm-6">
+
+      <table class="table table-striped table-condensed">
+        <tr><td>Time:</td><td>{{ meteor.time|date:"Y-m-d H:i:s.u" }} UT</td></tr>
+        <tr><td>Start RA/Dec:</td><td>
+          {{ meteor.ra_start|floatformat:3 }} {{ meteor.dec_start|floatformat:3 }}
+          -
+          <a href="{% url 'meteor_plot' meteor.id 'map' %}" title="Sky Map" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'map' %}', 'Sky Map for meteor {{ meteor.id }}', true);">
+            Map
+          </a>
+        </td></tr>
+        <tr><td>End RA/Dec:</td><td>{{ meteor.ra_end|floatformat:3 }} {{ meteor.dec_end|floatformat:3 }}</td></tr>
+        <tr><td>Zenith distance, deg:</td><td>{{ meteor.z|floatformat:1 }}</td></tr>
+        <tr><td>Angular Velocity, deg/s:</td><td>
+          <a href="{% url 'meteor_plot' meteor.id 'a_time' %}" title="Position vs Time plot" onclick="return popupImage(event, '{% url 'meteor_plot' meteor.id 'a_time' %}', 'Position vs Time for meteor {{ meteor.id }}', true);">
+            {% if meteor.ang_vel %}
+              {{ meteor.ang_vel|floatformat:2 }}
+            {% else %}
+              not measured
+            {% endif %}
+          </a>
+        </td></tr>
+        <tr><td>Peak Magnitude:</td><td>
+          {% if meteor.mag_calibrated %}
+            {{ meteor.mag_min|floatformat:1 }} / {{ meteor.filter }}
+          {% endif %}
+        </td></tr>
+      </table>
+
+    </div>
+  </div>
+  <div>
+    <p class="text-center">
+      <a href="{% url 'meteor_download_track' meteor.id %}" title="Download meteor track">Download track</a>
+    </p>
+  </div>
+<!-- Track / image -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#meteor-track"><span class="glyphicon glyphicon-stats"></span> First image / Detection mask</a>
+    </h4>
+  </div>
+  <div id="meteor-track" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <div class="row">
+
+        <div class="col-sm-6">
+          <a href="{% url 'realtime_object_animation' meteor.id %}" title="Animation" onclick="return popupImage(event, '{% url 'realtime_object_animation' meteor.id %}', 'Animation of meteor {{ meteor.id }}', true);">
+            <img src="{% url 'realtime_image_preview_large' firstimage.id %}" class="img-responsive center-block">
+          </a>
+        </div>
+
+        <div class="col-sm-6">
+          <img src="{% url 'meteor_plot' meteor.id 'mask' %}" class="img-responsive center-block" title="Track detection mask">
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#meteor-profile"><span class="glyphicon glyphicon-stats"></span> Track Profile</a>
+    </h4>
+  </div>
+  <div id="meteor-track" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'meteor_plot' meteor.id 'profile' %}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- LC -->
+<!--
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#meteor-lc-flux"><span class="glyphicon glyphicon-stats"></span> Light Curve / Flux</a>
+    </h4>
+  </div>
+  <div id="meteor-lc-flux" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'meteor_plot' meteor.id 'lc_flux' %}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+-->
+
+{% if meteor.mag_calibrated %}
+<!-- LC mag -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#meteor-lc-mag"><span class="glyphicon glyphicon-stats"></span> Light Curve / Magnitudes</a>
+    </h4>
+  </div>
+  <div id="meteor-lc-mag" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'meteor_plot' meteor.id 'lc_mag' %}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if channels %}
+<!-- LC mags -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#meteor-lc-mags"><span class="glyphicon glyphicon-stats"></span> Light Curve / Multicolor</a>
+    </h4>
+  </div>
+  <div id="meteor-lc-mags" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'meteor_plot' meteor.id 'lc_mags' %}" class="img-responsive center-block">
+      <img src="{% url 'meteor_plot' meteor.id 'lc_colors' %}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

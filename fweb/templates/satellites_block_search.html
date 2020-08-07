@@ -1,0 +1,180 @@
+{% load filters %}
+<div class="panel-body">
+
+  <div class="row">
+    <div class="col-md-8">
+
+      <form action="{% url 'satellites_list' %}" method="post" role="form" class="form-horizontal">{% csrf_token %}
+        <small>
+        <div class="form-group form-group-sm">
+          <div class="input-group">
+            <span class="input-group-addon">ID:</span>
+            <input name='catalogue_id' id='catalogue_id' type='text' class="form-control" placeholder="Catalogue ID number(s)" {% if request.POST.catalogue_id %}value="{{ request.POST.catalogue_id }}"{% endif %}/>
+            <span class="input-group-addon">Name:</span>
+            <input name='name' id='name_id' type='text' class="form-control" placeholder="Satellite name" {% if request.POST.name %}value="{{ request.POST.name }}"{% endif %}/>
+            <span class="input-group-addon">Comments:</span>
+            <input name='comments' id='comments_id' type='text' class="form-control" placeholder="Comments" {% if request.POST.comments %}value="{{ request.POST.comments }}"{% endif %}/>
+          </div>
+        </div>
+
+        <div class="form-group form-group-sm">
+
+          <div class="col-sm-2">
+            <div class="checkbox"><label><input type="checkbox" name="var_nonvariable" {% if not request.POST or request.POST.var_nonvariable %}checked{% endif %}>Non-variable</label></div>
+          </div>
+
+          <div class="col-sm-2">
+            <div class="checkbox"><label><input type="checkbox" name="var_variable" {% if not request.POST or request.POST.var_variable %}checked{% endif %}>Aperiodic</label></div>
+          </div>
+
+          <div class="col-sm-2">
+            <div class="checkbox"><label><input type="checkbox" name="var_periodic" {% if not request.POST or request.POST.var_periodic %}checked{% endif %}>Periodic</label></div>
+          </div>
+
+          <div class="col-md-2">
+            <input name='var_pmin' type='text' class="form-control" placeholder="Min Period, s" {% if request.POST.var_pmin %}value="{{ request.POST.var_pmin }}"{% endif %}/>
+          </div>
+          <div class="col-md-2">
+            <input name='var_pmax' type='text' class="form-control" placeholder="Max Period, s" {% if request.POST.var_pmax %}value="{{ request.POST.var_pmax }}"{% endif %}/>
+          </div>
+
+          <div class="col-sm-2">
+            <button type="submit" name="action" value="search" class="btn btn-default btn-sm btn-block">Search</button>
+          </div>
+
+        </div>
+
+        <div class="form-group form-group-sm">
+          <div class="col-sm-12">
+            <label class="checkbox-inline" title="{{ 0|satellite_type }}"><input type="checkbox" name="type_0" {% if not request.POST or request.POST.type_0 %}checked{% endif %}>{{ 0|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 1|satellite_type }}"><input type="checkbox" name="type_1" {% if not request.POST or request.POST.type_1 %}checked{% endif %}>{{ 1|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 2|satellite_type }}"><input type="checkbox" name="type_2" {% if not request.POST or request.POST.type_2 %}checked{% endif %}>{{ 2|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 3|satellite_type }}"><input type="checkbox" name="type_3" {% if not request.POST or request.POST.type_3 %}checked{% endif %}>{{ 3|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 4|satellite_type }}"><input type="checkbox" name="type_4" {% if not request.POST or request.POST.type_4 %}checked{% endif %}>{{ 4|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 5|satellite_type }}"><input type="checkbox" name="type_5" {% if not request.POST or request.POST.type_5 %}checked{% endif %}>{{ 5|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 6|satellite_type }}"><input type="checkbox" name="type_6" {% if not request.POST or request.POST.type_6 %}checked{% endif %}>{{ 6|satellite_type_short }}</label>
+            <label class="checkbox-inline" title="{{ 7|satellite_type }}"><input type="checkbox" name="type_7" {% if not request.POST or request.POST.type_7 %}checked{% endif %}>{{ 7|satellite_type_short }}</label>
+            <p class="form-control-static pull-right">
+              <a data-toggle="collapse" href="#orbital">
+                Orbital parameters
+                <span class="glyphicon glyphicon-triangle-bottom"></span>
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div class="form-group form-group-sm collapse" id="orbital">
+          <div class="col-sm-12">
+            <div class="col-md-3">
+              <input name='orb_incl_min' type='text' class="form-control" placeholder="Min Inclination, deg" {% if request.POST.orb_incl_min %}value="{{ request.POST.orb_incl_min }}"{% endif %}/>
+            </div>
+            <div class="col-md-3">
+              <input name='orb_incl_max' type='text' class="form-control" placeholder="Max Inclination, deg" {% if request.POST.orb_incl_max %}value="{{ request.POST.orb_incl_max }}"{% endif %}/>
+            </div>
+            <div class="col-md-3">
+              <input name='orb_period_min' type='text' class="form-control" placeholder="Min Orb. Period, minutes" {% if request.POST.orb_period_min %}value="{{ request.POST.orb_period_min }}"{% endif %}/>
+            </div>
+            <div class="col-md-3">
+              <input name='orb_period_max' type='text' class="form-control" placeholder="Max Orb. Period, minutes" {% if request.POST.orb_period_max %}value="{{ request.POST.orb_period_max }}"{% endif %}/>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="form-group form-group-sm">
+          <p class="help-block">
+            Enter either satellite ID or name. Several whitespace-separated IDs may be entered too.
+            If exact name will not be found, substring search will be used to show candidates.
+            Use checkboxes to select various variability classes or object types. Specify the period to refine search of satellites with periodic light curves.
+            {% if perms.fweb.access_data %}
+              <!-- For a more complex searches, you may use our <a href="{% url 'sql' %}">SQL Query</a> interface.  -->
+            {% endif %}
+            Read the <a data-toggle="collapse" href="#description">short description</a> also.
+            {% if not perms.fweb.access_satellites_all %}
+              <span class="text-danger">
+                Please note that all the satellites with CIS country code (i.e. Russian etc) are hidden from the list!
+              </span>
+            {% endif %}
+            If you have any questions or wish to use the data in your research, please contact Elena Katkova,
+            who is the primary person behind the database, using e-mail address <a href="mailto:mmt.satellite@yandex.ru">mmt.satellite@yandex.ru</a>
+          </p>
+        </div>
+        </small>
+      </form>
+    </div>
+
+    <div class="col-md-4">
+      <div class="panel panel-default" style="margin-bottom: 1px;">
+        <table class="table table-striped table-condensed">
+          <tr><td>Satellites</td><td>{{ nsatellites }}
+            <!-- {% for i in nsatellites_str %}<span class="glyphicon glyphicon-star"></span>{% endfor %} -->
+          </td></tr>
+          <tr><td>Tracks</td><td>{{ ntracks }}</td></tr>
+          <tr><td>Oldest</td><td>{{ time_min|date:"Y-m-d" }}</td></tr>
+          <tr><td>Latest</td><td>{{ time_max|date:"Y-m-d" }}</td></tr>
+        </table>
+      </div>
+      <p align="center"><a href="{% url 'satellite_download_list' %}" style='padding: 0; margin: 0'>Download list of satellites</a></p>
+    </div>
+
+    <!--
+    <div class="col-md-2">
+    <img src="{{ STATIC_URL }}/mmt6year.png" class="img-responsive center-block" title="We are celebrating the sixth year of this database!">
+    </div>
+    -->
+
+  </div>
+
+  <div id="description" class="collapse">
+    <h4>Description of the database</h4>
+    <p>
+      The database contains the satellites observed by MMT and identified using publicly available TLE data. The standard magnitudes (corresponding to the phase angle 90 deg and the distance of 1000 km outside the penumbra) have been computed for every satellite, and rough classification of its variability is performed.
+    </p>
+    <ul>
+      <li>Periodic - significantly periodic light curves</li>
+      <li>Aperiodic - stochastic brightness variations or not enough data to estimate the period</li>
+      <li>Non-variable - brightness is not varying significantly</li>
+    </ul>
+    <p>
+      You may use the search fields and checkboxes to search using either satellite catalogue ID or name, and to filter the results according to variability class and/or range of periods.
+    </p>
+    <p>
+      The satellite information includes its catalogue ID and name, launch date and standard magnitude averaged over all available non-penumbral observations. Every track contains information on the distance and phase angle changing during the passage of satellite through MMT field of view, as well as its apparent brightness and standard magniude.
+    </p>
+    <p>
+      Symbols used:
+    </p>
+    <ul>
+      <li><span class="glyphicon glyphicon-ok-sign"></span> - identified using NORAD TLE</li>
+      <li><span class="glyphicon glyphicon-info-sign"></span> - identified using <a href="https://www.prismnet.com/~mmccants/tles/index.html">McCants catalogue</a></li>
+      {% if perms.fweb.access_satellites_all %}
+        <li><span class="glyphicon glyphicon-question-sign"></span> - identified using Russian classified catalogue</li>
+      {% endif %}
+      <li><span class="glyphicon glyphicon-eye-close" style="color:red"></span> - observed while in penumbra</li>
+      <li><span class="glyphicon glyphicon-eye-open"></span> - observed outside the penumbra</li>
+    </ul>
+
+    <p>
+      The objects are classified as follows:
+    </p>
+    <ul>
+      {% for i in "01234567" %}
+        <li><b>{{ forloop.counter0|satellite_type_short }}</b> - {{ forloop.counter0|satellite_type }}</li>
+      {% endfor %}
+    </ul>
+
+    <p>
+      Photometric measurements are performed either in standard Johnson-Cousins BVR filters, or, more frequently, in a white light. In the latter case, the magnitudes are calibrated to V one using field stars.
+    </p>
+
+    <p>
+      Radar Cross-Section data are taken from the publicly available list at <a href="http://celestrak.com">CelesTrak</a>.
+    </p>
+
+    <p>
+      Instrument coordinates are: 41°25'53.3" E, 43°38'59.5" N, 2030 m
+    </p>
+
+  </div>
+
+</div>

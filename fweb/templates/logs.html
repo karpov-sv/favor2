@@ -1,0 +1,38 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% block ptitle %}Logs : MMT Archive{% endblock %}
+
+{% block title %}Logs / {{id}}{% endblock %}
+
+{% block content %}
+
+{% if ids %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Filter:</span>
+    {% for id1 in ids %}
+    <a class="btn btn-default btn-sm {% if id == id1 %} disabled {% endif %}" href="/logs/{{ id1 }}">{{ id1 }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% paginate 50 logs %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Time, UT</th><th>Id</th><th>Message</th>
+  </tr>
+  {% for message in logs %}
+  <tr>
+    <td>{{ message.time|date:"Y-m-d H:i:s.u" }}</td>
+    <td><a href="/logs/{{ message.id }}">{{ message.id }}</td>
+    <td>{{ message.text }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% show_pages %}
+
+{% endblock %}

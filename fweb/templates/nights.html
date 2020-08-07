@@ -1,0 +1,57 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% block ptitle %}Nights : MMT Archive{% endblock %}
+
+{% block title %}Summary of Observational Nights
+  {% if all %}{% else %}/ Latest{% endif %}
+{% endblock %}
+
+{% block content %}
+
+  <div class="pull-right">
+  {% if all %}
+    <a href="{% url 'nights' %}">Show Latest</a>
+  {% else %}
+    <a href="{% url 'nights_all' %}">Show All</a>
+  {% endif %}
+  </div>
+
+{% paginate 20 nights %}
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Night</th>
+    <th>Secondscale Images</th>
+    <th>Realtime objects</th>
+    <th>Meteors</th>
+    <th>Moving</th>
+    <th>Flashes</th>
+    {% if perms.fweb.download_data %}
+      <th colspan=2>Downloads</th>
+    {% endif %}
+  </tr>
+  {% for night in nights %}
+  <tr>
+    <td><a href="{% url 'night_summary' night.night %}"><span class="glyphicon glyphicon-th-list"></span> {{ night.night }}</a></td>
+    <td align=left><a href="/images/night/{{ night.night }}"><span class="glyphicon glyphicon-picture"></span> {{ night.nimages }}</a></td>
+    <td align=left><a href="/realtime/night/{{ night.night }}">{{ night.nobjects }}</a></td>
+    <td align=left><a href="/realtime/night/{{ night.night }}/meteor"><span class="glyphicon glyphicon-flash"></span> {{ night.nobjects_meteor }}</a></td>
+    <td align=left><a href="/realtime/night/{{ night.night }}/moving"><span class="glyphicon glyphicon-plane"></span> {{ night.nobjects_moving }}</a></td>
+    <td align=left><a href="/realtime/night/{{ night.night }}/flash"><span class="glyphicon glyphicon-star"></span> {{ night.nobjects_flash }}</a></td>
+
+    {% if perms.fweb.download_data %}
+      <td>
+        <a href="/nights/moving/{{ night.night }}" title="Get satellites"><span class="glyphicon glyphicon-plane"></span>>100</a>
+        <a href="/nights/moving/{{ night.night }}?min_length=50" title="Get satellites"><span class="glyphicon glyphicon-plane"></span>>50</a>
+        <a href="/nights/moving/{{ night.night }}?min_length=10" title="Get satellites"><span class="glyphicon glyphicon-plane"></span>>10</a>
+        <a href="/nights/moving/{{ night.night }}?min_length=1" title="Get satellites"><span class="glyphicon glyphicon-plane"></span>>1</a>
+      </td>
+    {% endif %}
+  </tr>
+{% endfor %}
+</table>
+
+{% show_pages %}
+
+{% endblock %}

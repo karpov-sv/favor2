@@ -1,0 +1,102 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "checkall.html" %}
+  {% include "popup_image.html" %}
+
+  <script language="javascript">
+   $(function(){
+     $('.comment-text').autosize();
+   });
+  </script>
+
+{% endblock %}
+
+{% block ptitle %}Satellites : MMT Archive{% endblock %}
+
+{% block title %}<a href="{% url 'satellites_list' %}" style="color: black">Satellites identified in MMT data</a>
+{% endblock %}
+
+{% block content %}
+
+{% include "satellites_block_search.html" %}
+
+{% if satellites %}
+
+  <h3>
+    {% if id or catalogue_id or name %}
+      Search results for
+      {% if id %}ID: {{ id }}{% endif %}
+      {% if catalogue_id %}Catalogue ID: {{ catalogue_id }}{% endif %}
+      {% if name %}name: {{ name }}{% endif %}
+       - {{ satellites.count }} object(s)
+    {% else %}
+      All satellites ordered by {{ sort_description }} - {{ satellites.count }} object(s)
+    {% endif %}
+  </h3>
+
+  {% if not id and not catalogue_id and not name %}
+    <div>
+      Sort by
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-time_last"|GET_urlencode}}">latest track</a>,
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-time_first"|GET_urlencode}}">latest new detection</a>,
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=ntracks"|GET_urlencode}}">number of tracks</a>
+      (<a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-ntracks"|GET_urlencode}}">descending</a>),
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=variability_period"|GET_urlencode}}">variability period</a>
+      (<a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-variability_period"|GET_urlencode}}">descending</a>),
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=mean_clear"|GET_urlencode}}">mean brightness</a>
+      (<a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-mean_clear"|GET_urlencode}}">descending</a>),
+      <a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=rcs"|GET_urlencode}}">RCS</a>
+      (<a href="?{{ request.GET|GET_remove:"sort"|GET_remove:"page"|GET_append:"sort=-rcs"|GET_urlencode}}">descending</a>)
+    </div>
+  {% endif %}
+
+  <!-- View all / selected satellites -->
+  {% include "satellites_block_list.html" %}
+
+{% elif satellite %}
+
+  <!-- Single satellite information -->
+  {% if tracks %}
+    <!-- View all tracks for the satellite -->
+
+    <h3>{{ satellite.name }}</h3>
+    {% include "satellites_block_details.html" %}
+
+    <h4>Tracks</h4>
+
+    {% include "satellites_block_tracks.html" %}
+
+  {% elif track %}
+    <!-- View single track -->
+
+    <div class="row">
+      <div class="col-md-6">
+        <h3>Track {{ track.id }}</h3>
+        {% include "satellites_block_track.html" %}
+      </div>
+
+      <div class="col-md-6">
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <a href="{% url 'satellite_details' satellite.id %}">{{ satellite.name }}</a>
+          </div>
+          {% include "satellites_block_details.html" %}
+        </div>
+        <div>
+          {% include "satellites_block_track_plots.html" %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Records -->
+    {% include "satellites_block_track_records.html" %}
+
+  {% endif %}
+
+{% endif %}
+
+{% endblock %}

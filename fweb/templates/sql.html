@@ -1,0 +1,133 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% block head %}
+<script language="javascript">
+$(function(){
+  $('#query-text').autosize();
+});
+</script>
+
+<!-- Bootbox -->
+<script src="{{ STATIC_URL }}/web/bootbox.min.js"></script>
+
+{% endblock %}
+
+{% block ptitle %}SQL : MMT Archive{% endblock %}
+
+{% block title %}Database SQL Query{% endblock %}
+
+{% block content %}
+  <div class="">
+    <form action="" method="post" role="form">{% csrf_token %}
+      <div class="form-group">
+        <textarea class="form-control" name="query" id="query-text" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <button type="submit" class="btn btn-default">Submit</button>
+      </div>
+      <p class="help-block">
+        Use the form to enter SQL queries to directly access MMT database. To
+        see the structure of database tables, use the schema browser below.<br>
+        The database is built using quite recent version of <a href="http://www.postgresql.org">PostgreSQL</a> RDBMS,
+        please consult its documentation on how to construct the queries. Or
+        just follow the examples.<br>
+        <span class="text-danger">
+        Database access using this interface is non-destructive, you can't modify or delete anything,
+        but still please do not stress the database with too heavyweight queries!</span>
+      </p>
+    </form>
+  </div>
+
+<!-- Schema -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#schema"><span class="glyphicon glyphicon-list"></span> Database Schema</a>
+    </h4>
+  </div>
+  <div id="schema" class="panel-collapse collapse">
+    <div class="panel-body">
+      <p class="help-block">
+         Here is the list of all tables and functions in the database. Click the name to see its details.
+      </p>
+
+      <h3>Tables</h3>
+
+      {% for table in tables %}
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h4 class="panel-title">
+              <a data-toggle="collapse" href="#{{ table.name }}"><span class="glyphicon glyphicon-th"></span> {{ table.name }}</a>
+              {% if table.table.table_type == 'VIEW' %}
+                <span class="label label-info">View</span>
+              {% endif %}
+            </h4>
+          </div>
+          <div id="{{ table.name }}" class="panel-collapse collapse">
+
+            <table class="table table-condensed table-striped table-bordered">
+              <tr><th class="col-md-4">Column</th><th class="col-md-2">Data type</th><th class="col-md-6"></th></tr>
+              {% for column in table.columns %}
+                <tr><td>{{ column.column_name }}</td><td>{{ column.udt_name }}</td><td>{{ column.data_type }}</td></tr>
+              {% endfor %}
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+
+      <h3>Functions</h3>
+
+        <div class="panel panel-default">
+          <div class="panel-heading">
+            <h4 class="panel-title">
+              <a data-toggle="collapse" href="#functions"><span class="glyphicon glyphicon-wrench"></span> Functions</a>
+            </h4>
+          </div>
+          <div id="functions" class="panel-collapse collapse">
+
+            <table class="table table-condensed table-striped table-bordered">
+              <tr><th class="col-md-4">Function</th><th class="col-md-2">Result</th><th class="col-md-4"></th><th class="col-md-3">Type</th></tr>
+              {% for function in functions %}
+                <tr><td>{{ function.routine_name }}</td><td>{{ function.type_udt_name }}</td><td>{{ function.data_type }}</td><td>
+                  {% if function.routine_body == 'SQL' %}
+                    <a href="#" onclick='bootbox.alert("{{ function.routine_definition|escapejs }}"); return false;'>{{ function.routine_body }}</a>
+                  {% else %}
+                    {{ function.routine_body }}
+                  {% endif %}
+                </td></tr>
+              {% endfor %}
+            </table>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<!-- Examples -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#examples"><span class="glyphicon glyphicon-info-sign"></span> Examples</a>
+    </h4>
+  </div>
+  <div id="examples" class="panel-collapse collapse">
+    <div class="panel-body">
+
+      <h3>Counting all stars in WBVR built-in catalogue</h3>
+      <pre>SELECT count(*) FROM WBVR</pre>
+
+      <h3>Counting all meteors detected by the system on given night</h3>
+      <pre>SELECT * FROM realtime_objects WHERE state = get_realtime_object_state_id('meteor') AND night='2014_08_12'</pre>
+
+      <h3>Select all nights when at least one image has been acquired</h3>
+      <pre>SELECT DISTINCT night FROM images ORDER BY night</pre>
+
+      <h3>Search satellites by both name and periodic variability flag</h3>
+      <pre>SELECT * FROM satellites WHERE variability=2 AND variability_period < 10 AND name ILIKE '%breeze%'</pre>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

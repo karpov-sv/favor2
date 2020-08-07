@@ -1,0 +1,22 @@
+{% extends "template.html" %}
+
+{% block head %}
+<script src="{{ STATIC_URL }}current.js" type="text/javascript"></script>
+{% endblock %}
+
+{% block title %}Current Meteo Conditions{% endblock %}
+
+{% block content %}
+
+<p><img id="current_image" src="/current.jpg" class="img-thumbnail center-block"></p>
+
+<!-- Boltwood //-->
+<p><img id="current_meteo_ambient_temp" src="/meteo/ambient_temp/current.jpg" class="img img-responsive center-block"></p>
+<p><img id="current_meteo_sky_ambient_temp" src="/meteo/sky_ambient_temp/current.jpg" class="img img-responsive center-block"></p>
+<p><img id="current_meteo_wind" src="/meteo/wind/current.jpg" class="img img-responsive center-block"></p>
+<p><img id="current_meteo_humidity" src="/meteo/humidity/current.jpg" class="img img-responsive center-block"></p>
+
+<!-- Sky Quality Meter //-->
+<p><img id="current_sqm_brightness" src="/sqm/brightness/current.jpg" class="img img-responsive center-block"></p>
+
+{% endblock %}

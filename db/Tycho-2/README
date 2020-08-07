@@ -1,0 +1,11 @@
+This dir should be extracted from the official Tycho2 release, and should look like this:
+
+format.htm  format.txt  readme.htm  readme.txt
+
+data:
+catalog.dat  index.dat  suppl_1.dat  suppl_2.dat
+
+docs:
+aa2000a.pdf  aa2000b.pdf  guide.pdf
+
+The code in dump.sh then transfer the necessary data to table tycho2 of favor2 database.

@@ -1,0 +1,301 @@
+{% extends "template.html" %}
+
+{% load filters %}
+
+{% block head %}
+<!-- Bootstrap-datetimepicker -->
+<link rel="stylesheet" href="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.css">
+<script src="{{ STATIC_URL }}/web/moment-with-locales.min.js"></script>
+<script src="{{ STATIC_URL }}/web/bootstrap-datetimepicker/bootstrap-datetimepicker.min.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function(){
+   var now = new Date();
+   now.setTime(now.getTime() + now.getTimezoneOffset()*60000);
+
+   {% if timestamp %}
+   now = "{{ timestamp|date:"Y-m-d H:i:s" }}";
+   {% endif %}
+
+   $('#datetimepicker').datetimepicker({
+     sideBySide: true,
+     useSeconds: true,
+     language: 'en',
+     format: "YYYY.MM.DD HH:mm:ss",
+     minDate: new Date("june 1, 2014"),
+     defaultDate: now,
+   });
+ });
+</script>
+
+{% endblock %}
+
+{% block ptitle %}MMT Status : MMT Archive{% endblock %}
+
+{% block title %}System Status
+{% if time %}
+  at {{ time|date:"Y-m-d H:i:s" }}
+{% else %}
+  Archive
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="well">
+  <form action="" method="post" role="form">{% csrf_token %}
+    <div class="form-group">
+      <div class='input-group date' id='datetimepicker'>
+        <span class="input-group-addon">UTC time:</span>
+
+        <input name='time' type='text' class="form-control" placeholder="YYYY.MM.DD HH:MM:SS"/>
+
+        <span class="input-group-addon datepickerbutton" title="Open time selector">
+          <span class="glyphicon glyphicon-calendar"></span>
+        </span>
+
+        <span class="input-group-btn">
+          <button type="submit" name="action" value="show" class="btn btn-default">Show status</button>
+        </span>
+      </div>
+
+      <div class="checkbox">
+        <label>
+          <input name="debug" type="checkbox" {% if request.GET.debug or request.POST.debug %}checked {% endif %}> Debug (detailed) view
+        </label>
+      </div>
+
+      <p class="help-block">Enter UTC time and the MMT status for that moment will be displayed, based on the data stored once per minute. You may use datetime picker widget (calendar icon) or enter time directly.</p>
+    </div>
+  </form>
+</div>
+
+{% if status %}
+  <!-- Central -->
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h3 class="panel-title">MMT Central Control
+      </h3>
+    </div>
+    <ul class="list-group">
+      <li class="list-group-item">State:
+        {{ status.state|make_label }}
+        :
+        {% if status.is_night == '1' %}
+          {{ "Night"|make_label:"success" }}
+        {% else %}
+          {{ "Daytime"|make_label:"danger" }}
+        {% endif %}
+        {% if status.is_weather_good == '1' %}
+          {{ "Weather good"|make_label:"success" }}
+        {% else %}
+          {{ "Weather bad"|make_label:"danger" }}
+        {% endif %}
+        {% if status.is_dome_open == '1' %}
+          {{ "Dome opened"|make_label:"success" }}
+        {% else %}
+          {{ "Dome closed"|make_label:"danger" }}
+        {% endif %}
+        {% if status.state|slice:":6" == 'manual' %}
+          {{ "Manual"|make_label:"danger" }}
+        {% else %}
+          {{ "Automatic"|make_label:"success" }}
+        {% endif %}
+        {% if status.state|slice:":5" == 'error' %}
+          {{ "Error"|make_label:"danger" }}
+        {% endif %}
+
+      </li>
+      <li class="list-group-item">Scheduler:
+        {% if scheduler.connected == '1' %}
+          {{ "Connected"|make_label:"success" }}
+          Zsun: {{ scheduler.zsun|make_label }}
+          Zmoon: {{ scheduler.zmoon|make_label }}
+          Suggested: {{ scheduler.suggestion_type|make_label }}
+          {% if scheduler.suggestion_type != 'survey' %}
+            Name: {{ scheduler.suggestion_name|make_label }}
+          {% endif %}
+          RA: {{ scheduler.suggestion_ra|make_label }}
+          Dec: {{ scheduler.suggestion_dec|make_label }}
+          {% if scheduler.suggestion_type != 'survey' %}
+            Filter: {{ scheduler.suggestion_filter|make_label }}
+            Exposure: {{ scheduler.suggestion_exposure|make_label }}
+          {% endif %}
+        {% else %}
+          {{ "Disconnected"|make_label:"danger" }}
+        {% endif %}
+      </li>
+      <li class="list-group-item">Weather:
+        {% if weather.connected == '1' %}
+          {{ "Connected"|make_label:"success" }}
+          {{ weather.cloud_cond|cloud_state }}
+          {{ weather.wind_cond|wind_state }}
+          {{ weather.rain_cond|rain_state }}
+          Temperature: {{ weather.ambient_temp|make_label }}
+          Sky-Ambient: {{ weather.sky_ambient_temp|make_label }}
+          Wind: {{ weather.wind|make_label }}
+          Humidity: {{ weather.humidity|make_label }}
+          Brightness: {{ weather.brightness|make_label }}
+          {{ weather.day_cond|day_state }}
+        {% else %}
+          {{ "Disconnected"|make_label:"danger" }}
+        {% endif %}
+      </li>
+      <li class="list-group-item">Dome:
+        {% if dome.connected == '1' %}
+          {{ "Connected"|make_label:"success" }}
+        {% else %}
+          {{ "Disconnected"|make_label:"danger" }}
+        {% endif %}
+      </li>
+      <li class="list-group-item">CAN:
+        {% if can.connected == '1' %}
+          {{ "Connected"|make_label:"success" }}
+
+          {% for chiller in  can.chillers %}
+            {% if chiller.state == '0' %}
+              {{ chiller.name|make_label:"success" }}
+            {% elif chiller.state == '1' %}
+              {{ chiller.name|make_label:"warning" }}
+            {% else %}
+              {{ chiller.namestate|make_label:"danger" }}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          {{ "Disconnected"|make_label:"danger" }}
+        {% endif %}
+      </li>
+    </ul>
+  </div>
+
+  <!-- Channels -->
+  <div class="well">
+    <div class="row">
+      {% for channel in channels %}
+        <div class="col-md-4" style="padding:1px">
+          <div class="panel panel-default" style="margin-bottom: 5px">
+            <div class="panel-heading" style="padding-top: 5px; padding-bottom: 5px">
+              <h3 class="panel-title">Channel {{ channel.id }}
+                {% if channel.connected == '1' %}
+                  {{ "Connected"|make_label:"success" }}
+                {% else %}
+                  {{ "Disconnected"|make_label:"danger" }}
+                {% endif %}
+              </h3>
+            </div>
+            <ul class="list-group">
+              {% if channel.connected == '1' %}
+                <li class="list-group-item" stype="padding: 5px">
+                  State: {{ channel.state|channel_state }}
+                  {% if channel.hw_cover == '1' %}
+                    {{ "Open"|make_label:"success" }}
+                  {% endif %}
+                  {% if channel.hw_has_ii == '1' and channel.hw_ii_power == '1' %}
+                    {{ "II"|make_label:"success" }}
+                  {% endif %}
+                  {% if channel.hw_lamp == '1' %}
+                    {{ "FF"|make_label:"danger" }}
+                  {% endif %}
+                  {% if channel.hw_grabber == '-1' %}
+                    {{ "Grabber"|make_label:"danger" }}
+                  {% endif %}
+                  {% if channel.hw_grabber == '0' or channel.hw_grabber == '2' %}
+                    {{ "Grabber"|make_label:"warning" }}
+                  {% endif %}
+                  {% if channel.processing == '1' %}
+                    {{ "Processing"|make_label:"primary" }}
+                  {% endif %}
+                  {% if channel.storage == '1' %}
+                    {{ "Storage"|make_label:"info" }}
+                  {% endif %}
+                  {% if channel.hw == '0' or channel.hw_connected == '0' %}
+                    {{ "HW"|make_label:"danger" }}
+                  {% endif %}
+                  {% if channel.hw_camera == '0' %}
+                    {{ "Camera"|make_label:"danger" }}
+                  {% endif %}
+                </li>
+                <li class="list-group-item" stype="padding: 5px">
+                  RA: {{ channel.ra|make_label }}
+                  Dec: {{ channel.dec|make_label }}
+                  Filter: {{ channel.hw_filter|make_label }}
+                  Mirror: {% filter make_label %}{{ channel.hw_mirror0 }} {{ channel.hw_mirror1 }}{% endfilter %}
+                </li>
+              {% endif %}
+
+              <!-- Debug output - all parameters -->
+              {% if request.GET.debug or request.POST.debug %}
+                {% for key,value in channel.items %}
+                  <li class="list-group-item" type="padding: 5px">{{key}} : {{value}}</li>
+                {% endfor %}
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        {% if forloop.counter == 3 or forloop.counter == 6 or forloop.counter == 9 %}
+    </div><div class="row">
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Mounts -->
+  <div class="well">
+    <div class="row">
+      {% for mount in mounts %}
+        <div class="col-md-4" style="padding:1px">
+          <div class="panel panel-default" style="margin-bottom: 5px">
+            <div class="panel-heading" style="padding-top: 5px; padding-bottom: 5px">
+              <h3 class="panel-title">Mount {{ mount.id }}
+                {% if mount.connected == '1' %}
+                  {{ "Connected"|make_label:"success" }}
+                {% else %}
+                  {{ "Disconnected"|make_label:"danger" }}
+                {% endif %}
+              </h3>
+            </div>
+            <ul class="list-group">
+              {% if mount.connected == '1' %}
+                {% if mount.hw_connected == '1' %}
+                  <li class="list-group-item" stype="padding: 5px">
+                    State: {{ mount.state|mount_state }}
+                    {% if mount.hw_cover == '1' %}
+                      {{ "Open"|make_label:"success" }}
+                    {% endif %}
+                  </li>
+                  <li class="list-group-item" stype="padding: 5px">
+                    RA: {{ mount.ra|make_label }}
+                    Dec: {{ mount.dec|make_label }}
+                  </li>
+                {% else %}
+                  <li class="list-group-item" stype="padding: 5px">
+                    State: {{ "HW Disconnected"|make_label:"danger" }}
+                  </li>
+                  <li class="list-group-item" stype="padding: 5px">
+                  </li>
+                {% endif %}
+              {% endif %}
+
+              <!-- Debug output - all parameters -->
+              {% if request.GET.debug or request.POST.debug %}
+                {% for key,value in mount.items %}
+                  <li class="list-group-item" type="padding: 5px">{{key}} : {{value}}</li>
+                {% endfor %}
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+        {% if forloop.counter == 3 or forloop.counter == 6 or forloop.counter == 9 %}
+    </div><div class="row">
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+
+  <!-- Sky View -->
+  <img src="{% url "status_beholder_sky" %}?time={{ timestamp|date:"Y.m.d H:i:s"|urlencode }}" class="img img-responsive center-block"/>
+
+{% endif %}
+
+{% endblock %}

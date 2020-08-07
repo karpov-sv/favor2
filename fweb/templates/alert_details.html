@@ -1,0 +1,74 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  {% include "popup_image.html" %}
+{% endblock %}
+
+{% block ptitle %}Alert {{ alert.id }} : MMT Archive{% endblock %}
+
+{% block title %}Realtime Alert {{ alert.id }}
+{% endblock %}
+
+{% block content %}
+
+<table class="table table-striped table-condensed">
+  <tr><td>ID</td><td>{{ alert.id }}</td></tr>
+  <tr><td>Time</td><td>{{ alert.time|date:"Y-m-d H:i:s.u" }} UT</td></tr>
+  <tr><td>Night:</td><td><a href="{% url 'night_summary' alert.night %}" title="Summary for this night">{{ alert.night }}</a></td></tr>
+  <tr><td>RA</td><td>{{ alert.ra }}</td></tr>
+  <tr><td>Dec</td><td>{{ alert.dec }}</td></tr>
+  <tr><td>Excess</td><td>{{ alert.excess }}</td></tr>
+  <tr><td>Channel ID</td><td>{{ alert.channel_id }}</td></tr>
+  <tr><td>Realtime</td><td>{% if object %}
+    <a href="{% url 'realtime_object' object.id %}">{{ object.id }}</a>
+    - <a href="{% url 'realtime_object_animation' object.id %}" onclick="return popupImage(event, '{% url 'realtime_object_animation' object.id %}', 'Animation for object {{ object.id }}', true);">Animation</a>
+  {% endif %}</td></tr>
+  {% if object and object.params.classification %}
+    <tr><td>Classification</td><td>{{ object.params.classification|linebreaks }}</td></tr>
+  {% endif %}
+
+  <tr><td>Followup setup</td><td>
+    {% for cid in channel_ids %}
+      {% if cid == alert.channel_id %}
+        <b>{{ alert.channel_id }}: Unchanged</b><br>
+      {% elif filters|get:cid %}
+        <a href="#channel-{{ cid }}">{{ cid }}</a>: {{ filters|get:cid }}, {{ channels|get:cid|length}} x {{ exposures|get:cid }} s<br>
+      {% endif %}
+    {% endfor %}
+  </td></tr>
+  <tr><td>First followup frame</td><td>T + {{ dt|floatformat:1 }} s</td></tr>
+</table>
+
+{% for cid,images in channels.items %}
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#channel-{{ cid }}"><span class="glyphicon glyphicon-th"></span> Channel {{ cid }} - {{ filters|get:cid }}, {{ images|length }} x {{ exposures|get:cid }} s</a>
+      </h4>
+    </div>
+    <div id="channel-{{ cid }}" class="panel-collapse collapse in">
+      <div class="panel-body">
+        <div class="row">
+          {% for image in images %}
+            <div class="col-md-3"><div class="panel panel-default">
+              <div class="panel-body" style="padding: 3px">
+                <a href="{% url 'survey_image_download' image.id alert.ra alert.dec sr %}" title="Download image crop">
+                  <img src="{% url 'survey_image' image.id alert.ra alert.dec sr %}?ra0={{ alert.ra }}&dec0={{ alert.dec }}&sr0=0.02" class="img-responsive">
+                </a>
+              </div>
+              <div class="panel-footer">
+                {{ image.time|date:"Y-m-d H:i:s"}} UT - {{ image.time|seconds_since:alert.time|floatformat:1 }} s
+              </div></div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% endfor %}
+
+{% endblock %}

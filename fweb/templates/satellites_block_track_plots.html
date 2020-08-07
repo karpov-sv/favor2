@@ -1,0 +1,36 @@
+<!-- Focus -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#track_stdmag"><span class="glyphicon glyphicon-signal"></span> Track standard magnitudes</a>
+    </h4>
+  </div>
+  <div id="track_stdmag" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="{% url 'satellite_track_plot' track.id 'stdmag' %}" class="img-responsive center-block"/>
+    </div>
+  </div>
+</div>
+
+<p class="text-center">
+  Track:
+  <a href="{% url 'satellite_track_plot' track.id 'mag' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'mag' %}', 'Light curve for track {{ track.id }}');">Lightcurve</a>
+  -
+  <a href="{% url 'satellite_track_plot' track.id 'stdmag' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'stdmag' %}', 'Standard magnitudes for track {{ track.id }}');">Standard magnitudes</a>
+  -
+  <a href="{% url 'satellite_track_plot' track.id 'distance' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'distance' %}', 'Distances for track {{ track.id }}');">Distances</a>
+  -
+  <a href="{% url 'satellite_track_plot' track.id 'phase' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'phase' %}', 'Phases for track {{ track.id }}');">Phases</a>
+  {% if track.variability == 2 %}
+    -
+    <a href="{% url 'satellite_track_plot' track.id 'fold' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'fold' %}', 'Folded lightcurve for track {{ track.id }}');" title="Folded">Folded</a>
+    -
+    <a href="{% url 'satellite_track_plot' track.id 'fold' %}?refine=1" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'fold' %}?refine=1', 'Folded lightcurve for track {{ track.id }}');" title="Folded with refined period">Refined</a>
+    -
+    <a href="{% url 'satellite_track_plot' track.id 'pdm' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'pdm' %}', 'Phase Dispersion Minimization for track {{ track.id }}');" title="Phase Dispersion Minimization">PDM</a>
+  {% endif %}
+  -
+  <a href="{% url 'satellite_track_plot' track.id 'ls' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'ls' %}', 'Lomb-Scargle periodogram for track {{ track.id }}');" title="Periodogram">Periodogram</a>
+  -
+  <a href="{% url 'satellite_download_track' track.id %}" title="Downoad track">Download</a>
+</p>

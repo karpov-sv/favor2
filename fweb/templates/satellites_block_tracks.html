@@ -1,0 +1,121 @@
+{% load endless %}
+{% load filters %}
+
+<form action="" method="post">{% csrf_token %}
+
+  {% paginate 50 tracks %}
+  <fieldset>
+    <table class="table table-striped table-condensed">
+      <tr>
+        {% if perms.fweb.modify_satellites %}
+          <th><input type="checkbox" class="checkall"></th>
+        {% endif %}
+        <th>Track ID</th>
+        <th>Start, UT</th>
+        <th>Duration, s</th>
+        <th>Nrecords</th>
+        <th>Clear</th>
+        <th>B</th>
+        <th>V</th>
+        <th>R</th>
+        <th></th>
+        <th></th>
+        <th></th>
+      </tr>
+
+      {% for track in tracks %}
+        <tr>
+          {% if perms.fweb.modify_satellites %}
+            <td><input type="checkbox" name="track_ids[]" value="{{track.id}}"></td>
+          {% endif %}
+          <td><a href="{% url 'satellite_track' track.id %}"><span class="glyphicon glyphicon-th-list"></span> {{ track.id }}</a></td>
+          <td>{{ track|satellite_track_start|date:"Y-m-d H:i:s" }}</td>
+          <td>{{ track|satellite_track_duration|floatformat:1 }}</td>
+          <td>{{ track.satelliterecords_set.count }}</td>
+          <td>{{ track|satellite_mean_stdmag:0|floatformat:2 }}{% if track|satellite_mean_stdmag:0 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:0|floatformat:2 }}</td>
+          <td>{{ track|satellite_mean_stdmag:1|floatformat:2 }}{% if track|satellite_mean_stdmag:1 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:1|floatformat:2 }}</td>
+          <td>{{ track|satellite_mean_stdmag:2|floatformat:2 }}{% if track|satellite_mean_stdmag:2 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:2|floatformat:2 }}</td>
+          <td>{{ track|satellite_mean_stdmag:3|floatformat:2 }}{% if track|satellite_mean_stdmag:3 %}  &plusmn; {% endif %}{{ track|satellite_stddev_stdmag:3|floatformat:2 }}</td>
+          <td>{% if track|satellite_track_penumbra %}
+            <span class="glyphicon glyphicon-eye-close" style="color:red" title="Penumbral"></span>
+          {% else %}
+            <span class="glyphicon glyphicon-eye-open" title="Non-penumbral"></span>
+          {% endif %}</td>
+          <td>
+            {% if track.variability == 1 %}
+              <span class="text-default">Aperiodic</span>
+            {% elif track.variability == 2 %}
+              <span class="text-default">Period: {{ track.variability_period|floatformat:2 }} s</span>
+            {% else %}
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'satellite_track_plot' track.id 'mag' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'mag' %}', 'Light curve for track {{ track.id }}');" title="Lightcurve">L</a>
+            <a href="{% url 'satellite_track_plot' track.id 'stdmag' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'stdmag' %}', 'Standard magnitudes for track {{ track.id }}');" title="Standard magnitudes">S</a>
+            <a href="{% url 'satellite_track_plot' track.id 'distance' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'distance' %}', 'Distances for track {{ track.id }}');" title="Distances">D</a>
+            <a href="{% url 'satellite_track_plot' track.id 'phase' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'phase' %}', 'Phases for track {{ track.id }}');" title="Phases">P</a>
+            |
+            {% if track.variability == 2 %}
+              <a href="{% url 'satellite_track_plot' track.id 'fold' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'fold' %}', 'Folded lightcurve for track {{ track.id }}');" title="Folded">F</a>
+              <a href="{% url 'satellite_track_plot' track.id 'fold' %}?refine=1" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'fold' %}?refine=1', 'Folded lightcurve for track {{ track.id }}');" title="Folded with refined period">R</a>
+              <a href="{% url 'satellite_track_plot' track.id 'pdm' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'pdm' %}', 'Phase Dispersion Minimization for track {{ track.id }}');" title="Phase Dispersion Minimization">M</a>
+            {% endif %}
+            <a href="{% url 'satellite_track_plot' track.id 'ls' %}" onclick="return popupImage(event, '{% url 'satellite_track_plot' track.id 'ls' %}', 'Lomb-Scargle periodogram for track {{ track.id }}');" title="Periodogram">P</a>
+            |
+            <a href="{% url 'satellite_download_track' track.id %}" title="Downoad track">T</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+  </fieldset>
+
+  {% show_pages %}
+
+  {% if perms.fweb.modify_satellites %}
+<!-- Actions -->
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+      </h4>
+    </div>
+    <div id="actions" class="panel-collapse collapse">
+      <div class="panel-body">
+        <div class="form-inline">
+
+          <div class="form-group">
+            <div class="button-group">
+              <button class="btn btn-default" type="submit" name="action" value="delete_tracks">Delete track(s)</button>
+
+              <div class="input-group">
+                <div class="input-group-addon">Name</div>
+                <input class="form-control" type="text" name="new_name" placeholder="Name" size=15 value="{{ satellite.name }}">
+              </div>
+
+              <button class="btn btn-default" type="submit" name="action" value="rename_satellite">Rename</button>
+
+              <div class="input-group">
+                <div class="input-group-addon">Catalogue ID</div>
+                <input class="form-control" type="text" name="new_catid" placeholder="Catalogue ID" size=10 value="">
+                <div class="input-group-addon">Catalogue</div>
+                <input class="form-control" type="text" name="new_cat" placeholder="Catalogue" size=5 value="{{ satellite.catalogue }}" title="1 - NORAD, 2 - Russian, 3 - McCants">
+              </div>
+
+              <button class="btn btn-default" type="submit" name="action" value="merge_satellite">Merge</button>
+
+              <select class="form-control" name="new_type">
+                {% for i in "01234567" %}
+                  <option value={{ forloop.counter0 }} {% if satellite.type == forloop.counter0 %}selected{% endif %}>{{ forloop.counter0 }} - {{ forloop.counter0|satellite_type }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-default" type="submit" name="action" value="change_satellite_type">Change Type</button>
+
+              <button class="btn btn-default" type="submit" name="action" value="delete_satellite">Delete satellite</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+</form>

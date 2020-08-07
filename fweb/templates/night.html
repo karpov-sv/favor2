@@ -1,0 +1,129 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+  <script language="javascript">
+   $(function(){
+     $('#comment-text').autosize();
+   });
+  </script>
+
+  {% include "popup_image.html" %}
+{% endblock %}
+
+{% block ptitle %}Night {{ night }} : MMT Archive{% endblock %}
+
+{% block title %}Summary for night {{ night }}{% endblock %}
+
+{% block content %}
+
+  <!-- Pager -->
+  <ul class="pager">
+    {% if night_prev %}
+      <li class="previous"><a href="{% url 'night_summary' night_prev.night %}"><span class="glyphicon glyphicon-backward"></span> {{ night_prev.night }}</a></li>
+    {% endif %}
+
+    {% if night_next %}
+      <li class="next"><a href="{% url 'night_summary' night_next.night %}">{{ night_next.night }} <span class="glyphicon glyphicon-forward"></span></a></li>
+    {% endif %}
+  </ul>
+
+  <!-- Summary -->
+  <table class="table table-striped table-condensed">
+    <tr>
+      <td>Night:</td>
+      <td>{{ night }}</td>
+    </tr>
+    <tr>
+      <td>Other years:</td>
+      <td>
+        {% for pn in other_years_nights %}
+          <a href="{% url 'night_summary' pn %}">{{ pn }}</a>
+        {% endfor %}
+      </td>
+    </tr>
+    <tr>
+      <td>Meteors:</td>
+      <td>
+        <a href="{% url 'realtime_objects' night %}/meteor" title="Meteors from this night">{{ num_meteors }}</a> total /
+        <a href="{% url 'meteors_list' night %}" title="Catalogued meteors">{{ num_meteors_analyzed }}</a> catalogued
+        {% if perms.fweb.modify_data and perms.fweb.access_realtime %}
+          {% if not meteors_processed %}
+            <span class="label label-danger">Unchecked!</span>
+          {% else %}
+            <!-- <span class="label label-success">Checked</span> -->
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td>Satellite trails:</td>
+      <td><a href="{% url 'realtime_objects' night %}/moving" title="Meteors from this night">{{ num_moving }}</a></td>
+    </tr>
+    <tr>
+      <td>Flashes:</td>
+      <td><a href="{% url 'realtime_objects' night %}/flash" title="Meteors from this night">{{ num_flashes }}</a>
+        {% if num_alerts %}
+          / <a href="{% url 'alerts_night' night %}" title="Alerts from this night">{{ num_alerts }}</a> triggered alerts
+          -
+          <a href="{% url 'alerts_map' night %}" onclick="return popupImage(event, '{% url 'alerts_map' night %}', 'Map of Alerts', true);">Map</a>
+        {% endif %}
+      </td>
+    </tr>
+    <!-- 
+    <tr>
+      <td>Survey Transients:</td>
+      <td>
+        <a href="{% url 'survey_transients_night_list' night %}?reliable=1" title="Reliable Transients">{{ num_survey_transients_reliable }}</a> reliable /
+        <a href="{% url 'survey_transients_night_list' night %}?reliable=1&noident=1" title="Non-identified Reliable Transients">{{ num_survey_transients_noident }}</a> non-identified
+      </td>
+    </tr>
+     -->
+    <tr>
+      <td>AVG Images:</td>
+      <td><a href="/images/night/{{ night }}/{{ 'avg' }}" title="AVG images from this night">{{ num_images_avg }}</a></td>
+    </tr>
+    <tr>
+      <td>Survey Images:</td>
+      <td><a href="/images/night/{{ night }}/{{ 'survey' }}" title="Survey images from this night">{{ num_images_survey }}</a></td>
+    </tr>
+  </table>
+
+  <!-- Meteors -->
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" href="#meteors-intersect"><span class="glyphicon glyphicon-flash"></span> Meteor showers</a>
+      </h4>
+    </div>
+    <div id="meteors-intersect" class="panel-collapse collapse in">
+      <div class="panel-body">
+        <div>
+          <img src="{% url 'meteors_radiants' night %}" class="img-responsive center-block">
+        </div>
+      </div>
+      <div>
+        <h4>Showers active around solar longitude {{ solar_lon|floatformat:1 }}</h4>
+      <table class="table table-striped table-condensed">
+        <tr><th>IAU Code</th><th>Name</th><th>RA</th><th>Dec</th><th>Solar Longitude</th><th>Status</th></tr>
+        {% for shower in showers %}
+          <tr>
+            <td>
+              <a href="{% url 'meteors_map' night shower.ra shower.dec %}" title="Sky Map" onclick="return popupImage(event, '{% url 'meteors_map' night shower.ra shower.dec %}', 'Sky Map for {{ shower.name }} on {{ night }}', true);">
+                {{ shower.iaucode }}
+              </a></td>
+            <td>{{ shower.name }}</td>
+            <td>{{ shower.ra }}</td>
+            <td>{{ shower.dec }}</td>
+            <td>{{ shower.solar_lon }}</td>
+            <td>{{ shower.status }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

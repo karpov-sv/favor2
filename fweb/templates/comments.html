@@ -1,0 +1,104 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block ptitle %}Comments : MMT Archive{% endblock %}
+
+{% block title %}Comments / {{ state }}{% endblock %}
+
+{% block content %}
+
+<div class="pull-right">
+  {% if request.GET.singlepage %}
+    <a href="?{{ request.GET|GET_remove:"singlepage"|GET_urlencode }}">Multi-page</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"singlepage"|GET_urlencode }}">Single-page</a>
+  {% endif %}
+  -
+  {% if request.GET.preview %}
+    <a href="?{{ request.GET|GET_remove:"preview"|GET_urlencode }}">No previews</a>
+  {% else %}
+    <a href="?{{ request.GET|GET_append:"preview"|GET_urlencode }}">Previews</a>
+  {% endif %}
+</div>
+
+{% if states %}
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Filter:</span>
+    {% for state1 in states %}
+    <a class="btn btn-default btn-sm {% if state == state1 %} disabled {% endif %}" href="/comments/{{ state1 }}">{{ state1 }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+
+{% if not request.GET.singlepage %}
+{% paginate 50 rt_comments %}
+{% endif %}
+
+<table class="table table-striped table-condensed">
+  <tr>
+    <th>Object</th>
+    <th>State</th>
+    <th>Length</th>
+    <th>Start Time, UT</th>
+    <th>Channel</th>
+    <th></th>
+    <th></th>
+    <th>Comment</th>
+  </tr>
+
+  {% for comment in rt_comments %}
+  <tr {% if preview %}style="border-top: 2px solid black"{% endif %}>
+    <td><a href="{% url 'realtime_object' comment.object.id %}">
+        {% if comment.object.state.name == 'flash' %}
+        <span class="glyphicon glyphicon-star"></span>
+        {% elif comment.object.state.name == 'moving' %}
+        <span class="glyphicon glyphicon-plane"></span>
+        {% elif comment.object.state.name == 'meteor' %}
+        <span class="glyphicon glyphicon-flash"></span>
+        {% else %}
+        <span class="glyphicon glyphicon-question-sign"></span>
+        {% endif %}
+        {{ comment.object.id }}</a></td>
+    <td align=center>{{ comment.object.state.name }}
+      {% if comment.object.params.classification %}
+      <span class="glyphicon glyphicon-info-sign" title="{{ comment.object.params.classification }}"></span>
+      {% endif %}
+    </td>
+    <td align=right>{{ comment.object.realtimerecords_set.count }} </td>
+    <td>{{ comment.object.time_start|date:"Y-m-d H:i:s.u" }} </td>
+    <td align=center>{{ comment.object.channel_id }} </td>
+
+    <td><a href="{% url 'realtime_object' comment.object.id %}"><span class="glyphicon glyphicon-eye-open"></span> View</a></td>
+    <td>
+      {% if comment.object.realtimeimages_set.count %}
+      <a href="{% url 'realtime_object_animation' comment.object.id %}"><span class="glyphicon glyphicon-facetime-video"></span> Animation</a>
+      {% endif %}
+    </td>
+
+    <td>{{ comment.comment|linebreaksbr }}</td>
+
+  </tr>
+  {% if comment.object.firstimage %}
+    <tr>
+      <td colspan=8>
+        <a href="{% url 'realtime_object' comment.object.id %}#animation"">
+          <img src="{% url 'realtime_image_preview_large' comment.object.firstimage.id %}" class="img img-responsive center-block">
+        </a>
+      </td>
+    </tr>
+  {% endif %}
+
+  {% endfor %}
+
+</table>
+
+{% if not request.GET.singlepage %}
+{% show_pages %}
+{% endif %}
+
+{% endblock %}

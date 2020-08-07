@@ -1,0 +1,4 @@
+svn co --username karpov --password S0G00d@sP0ssible svn://svn.parallax.ru:3690/mmtr
+svn co --username karpov --password S0G00d@sP0ssible https://svn.parallax.ru:443/mmtr/favor2
+
+S0G00d@sP0ssible

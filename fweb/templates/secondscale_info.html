@@ -1,0 +1,55 @@
+{% extends "template.html" %}
+
+{% load endless %}
+
+{% load filters %}
+
+{% block ptitle %}Secondscale : MMT Archive{% endblock %}
+
+{% block title %}Photometric data around ({{ ra }}, {{dec}}), {{ sr }} degrees{% endblock %}
+
+{% block content %}
+
+<!-- Light curve -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lc-mag"><span class="glyphicon glyphicon-signal"></span> Light curve / mag</a>
+    </h4>
+  </div>
+  <div id="lc-mag" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="/secondscale/lightcurve/coords/{{ ra }}/{{ dec }}/{{ sr }}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Light curve / flux -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#lc-flux"><span class="glyphicon glyphicon-stats"></span> Light curve / flux</a>
+    </h4>
+  </div>
+  <div id="lc-flux" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="/secondscale/lightcurve/coords/{{ ra }}/{{ dec }}/{{ sr }}/flux" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+<!-- Map -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#map"><span class="glyphicon glyphicon-pushpin"></span> Map</a>
+    </h4>
+  </div>
+  <div id="map" class="panel-collapse collapse">
+    <div class="panel-body">
+      <img src="/secondscale/map/coords/{{ ra }}/{{ dec }}/{{ sr }}" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+{% endblock %}

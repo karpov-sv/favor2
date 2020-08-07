@@ -1,0 +1,206 @@
+{% extends "template.html" %}
+
+{% load endless %}
+{% load filters %}
+
+{% block head %}
+<script language="javascript">
+$(function () {
+    $('.checkall').on('click', function () {
+        $(this).closest('fieldset').find(':checkbox').prop('checked', this.checked);
+    });
+});
+
+$(document).ready(function(){
+setTimeout($.proxy(location.reload, location, true), 600000);
+});
+
+</script>
+{% endblock %}
+
+{% block ptitle %}Scheduler : MMT Archive{% endblock %}
+
+{% block title %}Scheduler Targets{% endblock %}
+
+{% block content %}
+
+<!-- Map -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#map"><span class="glyphicon glyphicon-eye-open"></span> Sky Map</a>
+    </h4>
+  </div>
+  <div id="map" class="panel-collapse collapse in">
+    <div class="panel-body">
+      <img src="/scheduler/map" class="img-responsive center-block">
+    </div>
+  </div>
+</div>
+
+{% if message and message != "" %}
+  <div class="well">
+    {% autoescape off %}
+      {{ message }}
+    {% endautoescape %}
+  </div>
+{% endif %}
+
+<div class="pagination">
+  <div class="btn-group">
+    <span class="btn btn-default btn-sm disabled">Status:</span>
+    <a class="btn btn-default btn-sm {% if active %} active {% endif %}" href="?{% if active %}{{ request.GET|GET_remove:"active"|GET_append:"active=0"|GET_urlencode }}{% else %}{{ request.GET|GET_remove:"active"|GET_append:"active=1"|GET_urlencode }}{% endif %}">Active</a>
+    <a class="btn btn-default btn-sm {% if inactive %} active {% endif %}" href="?{% if inactive %}{{ request.GET|GET_remove:"active"|GET_append:"active=0"|GET_urlencode }}{% else %}{{ request.GET|GET_remove:"inactive"|GET_append:"inactive=1"|GET_urlencode }}{% endif %}">Inactive</a>
+    <a class="btn btn-default btn-sm {% if completed %} active {% endif %}" href="?{% if completed %}{{ request.GET|GET_remove:"completed"|GET_append:"completed=0"|GET_urlencode }}{% else %}{{ request.GET|GET_remove:"completed"|GET_append:"completed=1"|GET_urlencode }}{% endif %}">Completed</a>
+    <a class="btn btn-default btn-sm {% if archived %} active {% endif %}" href="?{% if archived %}{{ request.GET|GET_remove:"archived"|GET_append:"archived=0"|GET_urlencode }}{% else %}{{ request.GET|GET_remove:"archived"|GET_append:"archived=1"|GET_urlencode }}{% endif %}">Archived</a>
+    <a class="btn btn-default btn-sm {% if failed %} active {% endif %}" href="?{% if failed %}{{ request.GET|GET_remove:"failed"|GET_append:"failed=0"|GET_urlencode }}{% else %}{{ request.GET|GET_remove:"failed"|GET_append:"failed=1"|GET_urlencode }}{% endif %}">Failed</a>
+
+  </div>
+</div>
+
+{% if types %}
+  <div class="pagination">
+    <div class="btn-group">
+      <span class="btn btn-default btn-sm disabled">Types:</span>
+      {% for type1 in types %}
+        {% with text="type="|add:type1 %}
+          <a class="btn btn-default btn-sm {% if type == type1 %} disabled {% endif %}" href="?{{ request.GET|GET_remove:"type"|GET_append:text|GET_urlencode }}">{{ type1 }}</a>
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<form action="" method="post">{% csrf_token %}
+  {% paginate 20 targets %}
+  <fieldset>
+    <table class="table table-striped table-condensed">
+      <tr>
+        <th><input type="checkbox" class="checkall"></th>
+        <th>Id</th>
+        <th>Name</th>
+        <th>RA</th>
+        <th>Dec</th>
+        <th>Exposure</th>
+        <th>Filter</th>
+        <th>Type</th>
+        <th>Created, UT</th>
+        <th>Completed, UT</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+      {% for target in targets %}
+      <tr>
+        <td><input type="checkbox" name="target_ids[]" value="{{target.id}}"></td>
+        <td><a href="/scheduler/{{ target.id }}">{{ target.id }}</a></td>
+        <td><a href="/scheduler/{{ target.id }}">{{ target.name }}</a></td>
+        <td>{{ target.ra|floatformat:2 }} </td>
+        <td>{{ target.dec|floatformat:2 }} </td>
+        <td>{{ target.exposure }} {% if target.repeat != 1 %}x {{ target.repeat }}{% endif %}</td>
+        <td>{{ target.filter }} </td>
+        <td>{{ target.type }} </td>
+        <td>{{ target.time_created|date:"Y-m-d H:i:s" }}</td>
+        <td>
+          {% if target.time_completed %}
+            {{ target.time_completed|date:"Y-m-d H:i:s" }}
+          {% elif target.timetolive > 0 %}
+            TTL: {{ target.timetolive }} s
+          {% endif %}
+        </td>
+        <td>{{ target.status.name }} </td>
+        <td><a href="/scheduler/{{ target.id }}"><span class="glyphicon glyphicon-eye-open"></span></a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </fieldset>
+  {% show_pages %}
+
+<!-- Actions -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#actions"><span class="glyphicon glyphicon-wrench"></span> Actions</a>
+    </h4>
+  </div>
+  <div id="actions" class="panel-collapse collapse">
+    <div class="panel-body">
+      <div class="form-group">
+        <div class="button-group">
+          <button type="submit" name="action" value="disable" class="btn btn-default">Disable</button>
+          <button type="submit" name="action" value="enable" class="btn btn-default">Enable</button>
+          <button type="submit" name="action" value="complete" class="btn btn-default">Complete</button>
+          <button type="submit" name="action" value="restart" class="btn btn-default">Restart</button>
+          <button type="submit" name="action" value="delete" class="btn btn-default">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</form>
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h4 class="panel-title">
+      <a data-toggle="collapse" href="#target"><span class="glyphicon glyphicon-pushpin"></span> New Target</a>
+    </h4>
+  </div>
+  <div id="target" class="panel-collapse collapse">
+    <div class="panel-body">
+      <form action="" method="post" role="form">{% csrf_token %}
+        <div class="form-inline">
+          <div class="form-group">
+            <label>Coordinates:</label>
+            <input type="text" name="new-coords" class="form-control" placeholder="Coordinates or SIMBAD object name">
+          </div>
+
+          <div class="form-group">
+            <label>Name:</label>
+            <input type="text" name="new-name" class="form-control" placeholder="Name for this target">
+          </div>
+            <div class="form-group">
+              <label>Target type:</label>
+              <select class="form-control" name="new-type">
+                <option value="imaging">Imaging</option>
+                <option value="widefield">Widedield Imaging</option>
+                <option value="monitoring">Monitoring</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Filter:</label>
+              <select class="form-control" name="new-filter">
+                <option>Clear</option>
+                <option>B</option>
+                <option>V</option>
+                <option>R</option>
+                <option>Pol</option>
+                <option>B+Pol</option>
+                <option>V+Pol</option>
+                <option>R+Pol</option>
+                <option>BVR</option>
+                <option>BVR+Pol</option>
+                <option>BVR+Clear+Pol</option>
+              </select>
+            </div>
+
+        </div>
+        <div class="form-inline">
+          <div class="form-group">
+            <label>Exposure:</label>
+            <input type="text" name="new-exposure" class="form-control" placeholder="Exposure in seconds" size=20>
+          </div>
+
+          <div class="form-group">
+            <label>Repeat:</label>
+            <input type="text" name="new-repeat" class="form-control" placeholder="Number of exposures" size=10 value=1>
+          </div>
+        </div>
+
+        <button type="submit" name="action" value="new" class="btn btn-default">Create new target</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
