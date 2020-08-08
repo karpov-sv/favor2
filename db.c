@@ -104,7 +104,12 @@ PGresult *db_query(db_str *db, const char *template, ...)
 
 char *db_get_char(PGresult *res, int tup, int num)
 {
-    return make_string("%s", PQgetvalue(res, tup, num));
+    char *value = PQgetvalue(res, tup, num);
+
+    if(value)
+        return make_string("%s", value);
+    else
+        return NULL;
 }
 
 double db_get_double(PGresult *res, int tup, int num)
