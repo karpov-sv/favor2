@@ -168,6 +168,13 @@ void hw_aperture_move(hw_str *hw, int shift)
     server_connection_write_block(hw->lowlevel_connection, str, 6);
 }
 
+void hw_focus_init(hw_str *hw)
+{
+    char str[7] = "CNINI";
+
+    server_connection_write_block(hw->lowlevel_connection, str, 5);
+}
+
 void hw_ii_power(hw_str *hw, int value)
 {
     char str[6] = "IIPWR\0";
@@ -527,7 +534,7 @@ int process_hw_data(server_str *server, connection_str *conn, char *data, int le
                     }
                 }
 
-                if(count == 4){
+                if(TRUE /* count == 4 */){
                     filters_current = 0;
 
                     for(i = 0; i < 4; i++){
@@ -538,6 +545,7 @@ int process_hw_data(server_str *server, connection_str *conn, char *data, int le
 
                         filters_current += filters_state[i]*(1 << i);
                     }
+
                     update_hw_state(hw);
                 }
 
@@ -671,6 +679,9 @@ static void process_command(server_str *server, connection_str *connection, char
 
         hw_camera_power(hw, value);
         command_queue_add(hw->commands, connection, command_name(command), 10);
+    } else if(command_match(command, "init_focus")){
+        hw_focus_init(hw);
+        server_connection_message(connection, "%s_done", command_name(command));
     } else if(command_match(command, "reset_focus")){
         int id = 0;
 
@@ -818,7 +829,7 @@ static void process_command(server_str *server, connection_str *connection, char
 
         hw_filters_set(hw, value);
         command_queue_add(hw->commands, connection, command_name(command), 5);
-        command_queue_done(hw->commands, "set_filters");        
+        command_queue_done(hw->commands, "set_filters");
     } else if(command_match(command, "calibrate_filters")){
         hw_filters_calibrate(hw);
     } else if(command_match(command, "set_mirror")){

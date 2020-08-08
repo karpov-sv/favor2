@@ -18,7 +18,7 @@ realtime_str *realtime_create(int nominal)
     init_list(realtime->objects);
 
     realtime->saturation_level = 65535;
-    realtime->initial_catch_radius = 20;
+    realtime->initial_catch_radius = 40;
     realtime->max_meteor_angle = 20;
     realtime->meteor_elongation_threshold = 5;
     realtime->meteor_length_threshold = 20;

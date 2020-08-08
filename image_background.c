@@ -10,87 +10,87 @@
 #include "csa/csa.h"
 #include "mpfit.h"
 
-/* Delta arrays - possible steps from given pixel */
-static int dx[] = {0, 0,  0, 1, 1,  1, -1, -1, -1};
-static int dy[] = {0, 1, -1, 1, 0, -1,  1,  0, -1};
-static int dN = 9;
+/* /\* Delta arrays - possible steps from given pixel *\/ */
+/* static int dx[] = {0, 0,  0, 1, 1,  1, -1, -1, -1}; */
+/* static int dy[] = {0, 1, -1, 1, 0, -1,  1,  0, -1}; */
+/* static int dN = 9; */
 
 #define IS_PIXEL_VALID(image, saturation, x, y) ((x) >= 0 && (x) < (image)->width && (y) >= 0 && (y) < (image)->height && PIXEL_DOUBLE(image, x, y) < saturation)
 
-/* Get the direction to the nearest local maximum as an index in delta
-   arrays */
-static inline int get_max_n_idx(image_str *image, double saturation, int x, int y)
-{
-    int d;
-    int max_value = 0;
-    int max_id = 0;
+/* /\* Get the direction to the nearest local maximum as an index in delta */
+/*    arrays *\/ */
+/* static inline int get_max_n_idx(image_str *image, double saturation, int x, int y) */
+/* { */
+/*     int d; */
+/*     int max_value = 0; */
+/*     int max_id = 0; */
 
-    for(d = 0; d < dN; d++){
-        if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d])){
-            int value = PIXEL_DOUBLE(image, x + dx[d], y + dy[d]);
+/*     for(d = 0; d < dN; d++){ */
+/*         if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d])){ */
+/*             int value = PIXEL_DOUBLE(image, x + dx[d], y + dy[d]); */
 
-            if(d == 0 || value > max_value){
-                max_value = value;
-                max_id = d;
-            }
-        }
-    }
+/*             if(d == 0 || value > max_value){ */
+/*                 max_value = value; */
+/*                 max_id = d; */
+/*             } */
+/*         } */
+/*     } */
 
-    return max_id;
-}
+/*     return max_id; */
+/* } */
 
-/* Finds the locally reachable maximum position */
-static inline int get_reachable_maximum_xy(image_str *image, double saturation, int x0, int y0, int *x_ptr, int *y_ptr)
-{
-    int x = x0;
-    int y = y0;
-    int id = 0;
-    int Nsteps = 0;
+/* /\* Finds the locally reachable maximum position *\/ */
+/* static inline int get_reachable_maximum_xy(image_str *image, double saturation, int x0, int y0, int *x_ptr, int *y_ptr) */
+/* { */
+/*     int x = x0; */
+/*     int y = y0; */
+/*     int id = 0; */
+/*     int Nsteps = 0; */
 
-    while((id = get_max_n_idx(image, saturation, x, y))){
-        x += dx[id];
-        y += dy[id];
-        Nsteps ++;
-    }
+/*     while((id = get_max_n_idx(image, saturation, x, y))){ */
+/*         x += dx[id]; */
+/*         y += dy[id]; */
+/*         Nsteps ++; */
+/*     } */
 
-    if(x_ptr)
-        *x_ptr = x;
-    if(y_ptr)
-        *y_ptr = y;
+/*     if(x_ptr) */
+/*         *x_ptr = x; */
+/*     if(y_ptr) */
+/*         *y_ptr = y; */
 
-    return Nsteps;
-}
+/*     return Nsteps; */
+/* } */
 
-static inline int is_minimum(image_str *image, double saturation, int x, int y)
-{
-    int d;
-    int value = PIXEL_DOUBLE(image, x, y);
-    int result = TRUE;
+/* static inline int is_minimum(image_str *image, double saturation, int x, int y) */
+/* { */
+/*     int d; */
+/*     int value = PIXEL_DOUBLE(image, x, y); */
+/*     int result = TRUE; */
 
-    for(d = 1; d < dN; d++)
-        if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d]) &&
-           PIXEL_DOUBLE(image, x + dx[d], y + dy[d]) < value){
-            result = FALSE;
-            break;
-        }
+/*     for(d = 1; d < dN; d++) */
+/*         if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d]) && */
+/*            PIXEL_DOUBLE(image, x + dx[d], y + dy[d]) < value){ */
+/*             result = FALSE; */
+/*             break; */
+/*         } */
 
-    return result;
-}
+/*     return result; */
+/* } */
 
-static inline double get_local_value(image_str *image, double saturation, int x, int y)
-{
-    int d;
-    double sum = 0;
-    int N = 0;
+/* static inline double get_local_value(image_str *image, double saturation, int x, int y) */
+/* { */
+/*     int d; */
+/*     double sum = 0; */
+/*     int N = 0; */
 
-    for(d = 0; d < dN; d++)
-        if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d])){
-            sum += PIXEL_DOUBLE(image, x + dx[d], y + dy[d]);
-            N += 1;
-        }
+/*     for(d = 0; d < dN; d++) */
+/*         if(IS_PIXEL_VALID(image, saturation, x + dx[d], y + dy[d])){ */
+/*             sum += PIXEL_DOUBLE(image, x + dx[d], y + dy[d]); */
+/*             N += 1; */
+/*         } */
 
-    return sum/N;
-}
+/*     return sum/N; */
+/* } */
 
 static int cmpfn(const void *a, const void *b)
 {
@@ -143,7 +143,7 @@ static int fn_mpfit(int Npoints, int Nparams, double *params, double *residuals,
     return 0;
 }
 
-static double get_bijaoui_bg(double *data, int N)
+static double get_bijaoui_bg(double *data, int N, double *error_ptr)
 {
     int nbins = 100;
     double *I = (double*)calloc(nbins, sizeof(double));
@@ -245,6 +245,9 @@ static double get_bijaoui_bg(double *data, int N)
 
     mpfit((mp_func)fn_mpfit, nbins, 4, params, paropts, &conf, &model, &result);
 
+    if(error_ptr)
+        *error_ptr = params[1];
+
     return params[0];
 }
 
@@ -274,7 +277,7 @@ static double get_mode_bg(double *data, int N)
     return 2.5*med - 1.5*get_mean(data1, N1, NULL);
 }
 
-image_str *image_background(image_str *image, int step)
+image_str *image_background(image_str *image, image_str *errors, image_str *mask, int step)
 {
     image_str *bgimage = image_create_double(image->width, image->height);
     double saturation;
@@ -284,8 +287,10 @@ image_str *image_background(image_str *image, int step)
     int nx = ceil(3.0*image->width/step);
     int ny = ceil(3.0*image->height/step);
 
-    csa *csa = csa_create();
+    csa *vcsa = csa_create();
+    csa *ecsa = csa_create();
     point *points = NULL;
+    point *epoints = NULL;
     int Npoints = 0;
 
     if(image_keyword_find(image, "SATURATE"))
@@ -307,6 +312,8 @@ image_str *image_background(image_str *image, int step)
                 for(y = MAX(0, y0 - 0.5*step); y < MIN(image->height, y0 + 0.5*step); y++){
                     if(!IS_PIXEL_VALID(image, saturation, x, y))
                         continue;
+                   if(mask && PIXEL(mask, x, y))
+                        continue;
 
                     data = realloc(data, sizeof(double)*(N + 1));
                     data[N] = PIXEL_DOUBLE(image, x, y);
@@ -314,22 +321,39 @@ image_str *image_background(image_str *image, int step)
                 }
 
             if(N > 3){
+                double error = 0;
                 //double value = get_mode_bg(data, N);
-                double value = get_bijaoui_bg(data, N);
+                double value = get_bijaoui_bg(data, N, &error);
 
                 points = realloc(points, sizeof(point)*(Npoints + 1));
+                epoints = realloc(epoints, sizeof(point)*(Npoints + 1));
 
                 points[Npoints].x = x0;
                 points[Npoints].y = y0;
                 points[Npoints].z = value;
 
+                epoints[Npoints].x = x0;
+                epoints[Npoints].y = y0;
+                epoints[Npoints].z = error;
+
                 Npoints ++;
             }
+
+            free(data);
         }
 
-    csa_setk(csa, 80);
-    csa_addpoints(csa, Npoints, points);
-    csa_calculatespline(csa);
+    csa_setk(vcsa, 80);
+    csa_addpoints(vcsa, Npoints, points);
+    csa_calculatespline(vcsa);
+
+    csa_setk(ecsa, 80);
+    csa_addpoints(ecsa, Npoints, epoints);
+    if(errors){
+        csa_calculatespline(ecsa);
+    }
+
+    free(points);
+    free(epoints);
 
     for(j = 0; j < image->height; j++)
         for(i = 0; i < image->width; i++){
@@ -339,12 +363,17 @@ image_str *image_background(image_str *image, int step)
             p.y = j;
             p.z = 0;
 
-            csa_approximatepoint(csa, &p);
+            csa_approximatepoint(vcsa, &p);
             PIXEL_DOUBLE(bgimage, i, j) = p.z;
+
+            if(errors){
+                csa_approximatepoint(ecsa, &p);
+                PIXEL_DOUBLE(errors, i, j) = p.z;
+            }
         }
 
-    csa_destroy(csa);
-
+    csa_destroy(vcsa);
+    csa_destroy(ecsa);
 
     return bgimage;
 }

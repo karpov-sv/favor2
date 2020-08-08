@@ -1069,6 +1069,7 @@ static void process_queue_message(channel_str *channel, queue_message_str m)
             double ra0 = 0;
             double dec0 = 0;
             double pixscale = coords_get_pixscale(&info->coords);
+            static time_str last_coverage_time = {0, 0, 0, 0, 0, 0, 0}; /* FIXME: move to a macro or so */
 
             coords_get_ra_dec(&info->coords, 0.5*info->width, 0.5*info->height, &ra0, &dec0);
 
@@ -1076,8 +1077,13 @@ static void process_queue_message(channel_str *channel, queue_message_str m)
             channel->image_width = info->width;
             channel->image_height = info->height;
 
-            server_connection_message(channel->beholder_connection, "add_coverage ra0=%g dec0=%g size_ra=%g size_dec=%g exposure=%g time=%d",
-                                      ra0, dec0, pixscale*info->width, pixscale*info->height, info->exposure, (int)time_unix(info->time));
+            /* We should not report the coverage too often to relieve the scheduler */
+            if(1e-3*time_interval(last_coverage_time, time_current()) > 100.0){
+                server_connection_message(channel->beholder_connection, "add_coverage ra0=%g dec0=%g size_ra=%g size_dec=%g exposure=%g time=%d",
+                                          ra0, dec0, pixscale*info->width, pixscale*info->height, info->exposure, (int)time_unix(info->time));
+                last_coverage_time = time_current();
+            }
+
             free(m.data);
         }
         break;

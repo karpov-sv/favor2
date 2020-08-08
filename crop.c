@@ -50,6 +50,8 @@ int main(int argc, char **argv)
                "-match", &is_match,
                "-refine", &is_refine,
                "refine_radius=%lf", &refine_radius,
+               "match_degree=%d", &wcs_match_degree,
+               "refine_degree=%d", &wcs_refine_degree,
                "wcs=%s", &wcs_filename,
                "-compress", &is_compress,
                "-double", &is_double,

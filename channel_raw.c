@@ -174,7 +174,8 @@ void fits_writer_write(fits_writer_str *fits, image_str *image)
        coords_sky_distance(ra, dec, fits->last_ra, fits->last_dec) > 0.5)
         fits_writer_new_dir(fits, image->time);
 
-    filename = make_string("%s/%lld.fits", fits->dir, framenumber);
+    /* filename = make_string("%s/%lld.fits", fits->dir, framenumber); */
+    filename = make_string("%s/%lld.fits[compress]", fits->dir, framenumber);
     image_dump_to_fits(image, filename);
     fits->nfiles ++;
     fits->last_time = image->time;

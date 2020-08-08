@@ -17,6 +17,9 @@
 #include "match.h"
 #include "sextractor.h"
 
+int wcs_match_degree = 2;
+int wcs_refine_degree = 3;
+
 typedef struct {
     double Tx;
     double Ty;
@@ -665,19 +668,19 @@ coords_str blind_match_coords(image_str *image)
     if(image && command){
         image_dump_to_fits(image, imagename);
 
-        system_run("%s -t 2 -D %s"
+        system_run("%s -t %d -D %s"
                    " --no-plots --no-fits2fits --overwrite --objs 300"
                    " --use-sextractor --fits-image %s --no-verify",
-                   command, dirname, imagename);
+                   command, wcs_match_degree, dirname, imagename);
 
         if(file_exists_and_normal(newname)){
             /* Now let's verify the WCS we just matched */
             rename(newname, imagename);
 
-            system_run("%s -t 2 -D %s"
+            system_run("%s -t %d -D %s"
                        " --no-plots --no-fits2fits --overwrite --objs 3000"
                        " --use-sextractor --fits-image %s",
-                       command, dirname, imagename);
+                       command, wcs_match_degree, dirname, imagename);
         }
 
         if(file_exists_and_normal(wcsname)){
@@ -759,20 +762,20 @@ coords_str blind_match_coords_from_list(struct list_head *objects, int width, in
     if(command){
         objects_dump_to_fits(objects, listname);
 
-        system_run("%s -t 2 -D %s"
+        system_run("%s -t %d -D %s"
                    " --no-plots --no-fits2fits --overwrite --objs 300"
                    " --x-column XIMAGE --y-column YIMAGE --sort-column FLUX --width %d --height %d"
                    " %s",
-                   command, dirname, width, height, listname);
+                   command, wcs_match_degree, dirname, width, height, listname);
 
         if(file_exists_and_normal(wcsname)){
             rename(wcsname, tmpname);
 
-            system_run("%s -t 2 -D %s"
+            system_run("%s -t %d -D %s"
                        " --no-plots --no-fits2fits --overwrite --objs 3000"
                        " --x-column XIMAGE --y-column YIMAGE --sort-column FLUX --width %d --height %d"
                        " %s --verify %s",
-                       command, dirname, width, height, listname, tmpname);
+                       command, wcs_match_degree, dirname, width, height, listname, tmpname);
 
         }
 
@@ -802,6 +805,9 @@ int coords_refine_from_list(coords_str *coords, struct list_head *objects, struc
     char *wcsname = make_temp_filename("/tmp/wcs_XXXXXX");
     char *command = NULL;
     int result = FALSE;
+
+    if(!list_length(objects) || !list_length(stars))
+        return FALSE;
 
     /* Find matching stars and write them to temp file */
     {
@@ -866,12 +872,12 @@ int coords_refine_from_list(coords_str *coords, struct list_head *objects, struc
         command = "/opt/local/astrometry/bin/fit-wcs";
 
     if(command){
-        system_run("%s -x %s -r %s -s 3 -C -v -o %s", command, filename, filename, wcsname);
+        system_run("%s -x %s -r %s -s %d -C -v -o %s", command, filename, filename, wcs_refine_degree, wcsname);
 
         if(file_exists_and_normal(wcsname)){
             image_str *image = image_create_from_fits(wcsname);
 
-            if(!coords_is_empty(&image->coords)){
+            if(image && !coords_is_empty(&image->coords)){
                 *coords = image->coords;
                 result = TRUE;
             }

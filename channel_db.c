@@ -63,6 +63,9 @@ void store_image(channel_db_str *db, image_str *image)
                       db->channel->id, filename, night, timestamp, type, ra0, dec0,
                       image->width, image->height, filter, keywords);
 
+    if(strcmp(type, "avg") == 0 || strcmp(type, "survey") == 0)
+        add_to_string(&filename, "[compress]");
+
     mkdir(db->channel->filepath, 0755);
     mkdir(dirname, 0755);
     image_dump_to_fits(image, filename);

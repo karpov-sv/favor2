@@ -97,7 +97,7 @@ andor_str *andor_create()
     AT_SetEnumIndex(andor->handle, L"AOIBinning", 0);
     AT_SetEnumIndex(andor->handle, L"SimplePreAmpGainControl", 2);
     AT_SetFloat(andor->handle, L"ExposureTime", 0.1);
-    AT_SetFloat(andor->handle, L"TargetSensorTemperature", -40);
+    AT_SetFloat(andor->handle, L"TargetSensorTemperature", -20);
 
     /* List of buffers to clean them up */
     andor->chunks = g_hash_table_new_full(g_direct_hash, g_direct_equal, free, NULL);

@@ -445,7 +445,7 @@ static void process_command(server_str *server, connection_str *connection, char
             /* Allsky has just restarted and is reporting all zeros */
             dprintf("Weather values are all zeros");
         else {
-            weather_status = /* (cloud_cond == 1) && */ (wind_cond == 1 || wind_cond == 2) && (rain_cond == 1 || rain_cond == 2);
+            weather_status = (cloud_cond == 1) && (wind_cond == 1 || wind_cond == 2) && (rain_cond == 1 || rain_cond == 2);
 
             if(beholder->is_weather_good != weather_status){
                 beholder_log(beholder, "Weather state is %d", weather_status);

@@ -7,7 +7,7 @@ DEBUG    = -DDEBUG
 GDEBUG   = -g
 OPTIMIZE = -O2 -msse4 -ffast-math -fopenmp
 ANDOR    = -DANDOR
-ANDOR_FAKE = -DANDOR_FAKE
+#ANDOR_FAKE = -DANDOR_FAKE
 #TORTORA  = -DTORTORA
 #LICENSE  = -DUSE_LICENSE
 INCLUDES = -I.
@@ -18,6 +18,7 @@ LDLIBS  = -L. -lm -lcfitsio -lpthread -ljpeg -lgomp
 
 ifeq ($(shell uname), Linux)
 LDLIBS  += -ltcmalloc -lcrypt
+#LDLIBS  += -lcrypt
 endif
 
 # PostgreSQL part
@@ -164,7 +165,7 @@ LIBFAVOR_OBJS += andor_fake.o
 endif
 endif
 
-all: depend $(TARGETS) test_processing
+all: depend $(TARGETS)
 
 $(TARGETS): $(LIBFAVOR_OBJS)
 

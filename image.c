@@ -453,11 +453,16 @@ double image_median(image_str *image)
 image_str *image_smooth(image_str *image, double sigma)
 {
     image_str *res = image_create_double(image->width, image->height);
+    double saturation = 65535;
     int size = ceil(sigma*4);
     int x;
     int y;
 
     image_str *kernel = image_create_double(2*size+1, 2*size+1);
+
+    /* Guess saturation level from image keywords */
+    if(image_keyword_find(image, "SATURATE"))
+        saturation = image_keyword_get_double(image, "SATURATE");
 
     for(y = -size; y < size+1; y++)
         for(x = -size; x < size+1; x++){
@@ -479,12 +484,17 @@ image_str *image_smooth(image_str *image, double sigma)
                 for(y1 = MAX(0, y-size); y1 < MIN(image->height, y+size+1); y1++){
                     double weight = PIXEL_DOUBLE(kernel, x1 - x + size, y1 - y + size);
 
-                    if(image->type == IMAGE_DOUBLE)
-                        value += PIXEL_DOUBLE(image, x1, y1)*weight;
-                    else
-                        value += PIXEL(image, x1, y1)*weight;
-
-                    kernel_sum += weight;
+                    if(image->type == IMAGE_DOUBLE){
+                        if(PIXEL_DOUBLE(image, x1, y1) < saturation){
+                            value += PIXEL_DOUBLE(image, x1, y1)*weight;
+                            kernel_sum += weight;
+                        }
+                    } else {
+                        if(PIXEL(image, x1, y1) < saturation){
+                            value += PIXEL(image, x1, y1)*weight;
+                            kernel_sum += weight;
+                        }
+                    }
                 }
 
             PIXEL_DOUBLE(res, x, y) = value/kernel_sum;

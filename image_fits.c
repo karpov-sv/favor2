@@ -109,6 +109,7 @@ image_str *image_create_from_fits(char *filename)
     image_str *image = NULL;
 
     int status = 0;  /* Error code for CFITSIO library */
+    int Nhdus = 0;
     int Ndims = 0;
     int bitpix = 0;
     long Npixels = 0;
@@ -123,6 +124,16 @@ image_str *image_create_from_fits(char *filename)
     /* status = 0; */
 
     fits_open_file(&fits, filename, READONLY, &status);
+    fits_get_num_hdus(fits, &Nhdus, &status);
+
+    if(Nhdus <= 0) {
+        dprintf("Error: empty FITS image\n");
+        fits_close_file(fits, &status);
+
+        cfitsio_unlock();
+
+        return image;
+    }
 
     do {
         /* read dimensions */
@@ -131,11 +142,9 @@ image_str *image_create_from_fits(char *filename)
         fits_get_img_type(fits, &bitpix, &status);
 
         if(Ndims < 2){
-            int Nhdus = 0;
             int hdu = 0;
             int type = 0;
 
-            fits_get_num_hdus(fits, &Nhdus, &status);
             fits_get_hdu_num(fits, &hdu);
 
             if(hdu < Nhdus){
@@ -154,6 +163,8 @@ image_str *image_create_from_fits(char *filename)
         if(Ndims > 2)
             dprintf("Error: FITS images with more than 2 dimensions are not supported\n");
         fits_close_file(fits, &status);
+
+        cfitsio_unlock();
 
         return image;
     }

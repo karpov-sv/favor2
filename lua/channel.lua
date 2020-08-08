@@ -163,13 +163,13 @@ system_flat = rfsm.state
 
    rfsm.trans{src="initial", tgt="init"},
 
-   init = make_configure_state{ii=true, lamp=true, cover=false},
+   init = make_configure_state{ii=true, lamp=false, cover=true},
    rfsm.trans{src=".init.done", tgt="accum"},
 
    accum = make_accum_image_state(),
    rfsm.trans{src=".accum.done", tgt="final"},
 
-   final = make_configure_state{ii=false, lamp=false, cover=false},
+   final = make_configure_state{ii=false, lamp=false, cover=true},
    rfsm.trans{src=".final.done", tgt="done"},
 
    done = rfsm.state {},
@@ -178,20 +178,20 @@ system_flat = rfsm.state
 system_skyflat = rfsm.state
 {
    entry = function()
-      accum_type = "flat"
+      accum_type = "skyflat"
       accum_length = 100
       accum_use_progress = true
       send_message("set_state write_flats")
    end,
    exit = function() send_message("state_done write_flats") end,
 
-   rfsm.trans{src="initial", tgt="init"},
+   rfsm.trans{src="initial", tgt="accum"},
 
    init = make_configure_state{ii=true, lamp=false, cover=true},
    rfsm.trans{src=".init.done", tgt="accum"},
 
    accum = make_accum_image_state(),
-   rfsm.trans{src=".accum.done", tgt="final"},
+   rfsm.trans{src=".accum.done", tgt="done"},
 
    final = make_configure_state{ii=false, lamp=false, cover=true},
    rfsm.trans{src=".final.done", tgt="done"},

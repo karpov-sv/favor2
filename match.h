@@ -5,6 +5,9 @@
 #include "lists.h"
 #include "image.h"
 
+int wcs_match_degree;
+int wcs_refine_degree;
+
 /* Accepts two lists - with record_str for objects and with star_str for
    catalogue stars, as well as rough coordinates of the center, which will be
    used for computing standard coordinates for stars. */

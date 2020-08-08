@@ -4,7 +4,7 @@
 #include "lists.h"
 #include "time_str.h"
 
-#define MAX_SIP_ORDER 5
+#define MAX_SIP_ORDER 6
 
 typedef struct {
     double CRPIX1;

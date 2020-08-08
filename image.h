@@ -133,6 +133,6 @@ image_str *image_unsharp(image_str *, double );
 image_str *image_errors(image_str *, double , double , double );
 
 /* Image background estimation */
-image_str *image_background(image_str *, int );
+image_str *image_background(image_str *, image_str *, image_str *, int );
 
 #endif /* IMAGE_H */
