@@ -32,6 +32,7 @@ typedef struct {
     double threshold; /* Minimal signal/noise for fitted flux */
 
     int Ngood;
+    int *good;
 
     int Nglobals;
     int Npeakpars;
@@ -104,10 +105,14 @@ model_str *model_create(image_str *image, image_str *errors, image_str *mask, ps
     /* model->params[0] = image_min_value(model->image); */
 
     /* Mask */
+    model->good = calloc(model->image->width*model->image->height, sizeof(int));
     model->Ngood = 0;
     for(d = 0; d < mask->width*mask->height; d++)
-        if(!(mask->data[d] & FLAG_SATURATED) && !(mask->data[d] & FLAG_BAD))
+        if(!(mask->data[d] & FLAG_SATURATED) && !(mask->data[d] & FLAG_BAD)){
+            model->good[d] = model->Ngood;
             model->Ngood ++;
+        } else
+            model->good[d] = -1; /* Fake index which will not be used */
 
     return model;
 }
@@ -123,6 +128,8 @@ void model_delete(model_str *model)
 
     if(model->residuals)
         free(model->residuals);
+    if(model->good)
+        free(model->good);
 
     if(model->dx)
         free(model->dx);
@@ -173,7 +180,7 @@ void model_add_peak(model_str *model, peak_str *peak)
 
     model->peaks[model->Npeaks] = peak;
 
-    model->psfs[model->Npeaks] = psf_sampled_image_3d(model->psf, peak->x, peak->y, -2.5*log10(peak->flux));
+    model->psfs[model->Npeaks] = psf_sampled_image(model->psf, peak->x, peak->y);
     model->stamps[model->Npeaks] = image_create_double(model->size, model->size);
     psf_image_fill(model->psf, model->psfs[model->Npeaks], model->stamps[model->Npeaks], 0.0, 0.0);
     model->dx[model->Npeaks] = 0.0;
@@ -199,9 +206,6 @@ void model_add_peak(model_str *model, peak_str *peak)
         model->paropts[idx + 0].fixed = 1;
         model->paropts[idx + 1].fixed = 1;
         model->paropts[idx + 2].fixed = 1;
-
-        if(model->Npeakpars == 4)
-            model->paropts[idx + 3].fixed = 1;
     } else {
         if(model->params[idx + 0] < 0 || model->params[idx + 0] >= model->size ||
            model->params[idx + 1] < 0 || model->params[idx + 1] >= model->size){
@@ -225,16 +229,6 @@ void model_add_peak(model_str *model, peak_str *peak)
         model->paropts[idx + 2].limits[0] = 0;
         model->paropts[idx + 2].side = 0; /* Analytical derivative available */
         //model->paropts[idx + 2].deriv_debug = 1;
-
-        if(model->Npeakpars == 4){
-            model->paropts[idx + 3].limited[0] = 1;
-            model->paropts[idx + 3].limited[1] = 1;
-            model->paropts[idx + 3].limits[0] = -2;
-            model->paropts[idx + 3].limits[1] = 2;
-            model->paropts[idx + 3].step = 0.01;
-
-            //model->paropts[idx + 3].fixed = 1;
-        }
     }
 
     model->Npeaks ++;
@@ -252,44 +246,28 @@ void model_fill_image(model_str *model, double *params, double *imdata, double *
         imdata[d] = params[0] + x*params[1] + y*params[2];// + x*y*params[3] + x*x*params[4] + y*y*params[5];
     }
 
+    /* Imdata has full model size, but derivatives should contain only 'good' points! */
     if(derivatives){
         if(derivatives[0])
             for(d = 0; d < Npoints; d++)
                 /* Derivatives should be normalized inplace, as they are used for residuals only */
-                derivatives[0][d] = -1.0/model->errors->double_data[d];
+                if(model->good[d] >= 0)
+                    derivatives[0][model->good[d]] = -1.0/model->errors->double_data[d];
         if(derivatives[1])
             for(d = 0; d < Npoints; d++){
                 int x = d % model->image->width;
 
-                derivatives[1][d] = -x*1.0/model->errors->double_data[d];
+                if(model->good[d] >= 0)
+                    derivatives[1][model->good[d]] = -x*1.0/model->errors->double_data[d];
             }
         if(derivatives[2])
             for(d = 0; d < Npoints; d++){
                 int x = d % model->image->width;
                 int y = (d - x) / model->image->width;
 
-                derivatives[2][d] = -y*1.0/model->errors->double_data[d];
+                if(model->good[d] >= 0)
+                    derivatives[2][model->good[d]] = -y*1.0/model->errors->double_data[d];
             }
-        /* if(derivatives[3]) */
-        /*     for(d = 0; d < Npoints; d++){ */
-        /*         int x = d % model->image->width; */
-        /*         int y = (d - x) / model->image->width; */
-
-        /*         derivatives[3][d] = -x*y/model->errors->double_data[d]; */
-        /*     } */
-        /* if(derivatives[4]) */
-        /*     for(d = 0; d < Npoints; d++){ */
-        /*         int x = d % model->image->width; */
-
-        /*         derivatives[4][d] = -x*x/model->errors->double_data[d]; */
-        /*     } */
-        /* if(derivatives[5]) */
-        /*     for(d = 0; d < Npoints; d++){ */
-        /*         int x = d % model->image->width; */
-        /*         int y = (d - x) / model->image->width; */
-
-        /*         derivatives[5][d] = -y*y/model->errors->double_data[d]; */
-        /*     } */
     }
 
     for(d = 0; d < model->Npeaks; d++){
@@ -312,7 +290,7 @@ void model_fill_image(model_str *model, double *params, double *imdata, double *
         if((fabs(A - model->A[d]) >= 0.01*A && model->psf->sz) || dx != model->dx[d] || dy != model->dy[d]){
             if(fabs(A - model->A[d]) >= 0.01*A && model->psf->sz){
                 image_delete(model->psfs[d]);
-                model->psfs[d] = psf_sampled_image_3d(model->psf, model->peaks[d]->x, model->peaks[d]->y, -2.5*log10(MAX(1, A)));
+                model->psfs[d] = psf_sampled_image(model->psf, model->peaks[d]->x, model->peaks[d]->y);
                 model->A[d] = A;
             }
             psf_image_fill(model->psf, model->psfs[d], model->stamps[d], dx, dy);
@@ -327,7 +305,8 @@ void model_fill_image(model_str *model, double *params, double *imdata, double *
                     int idx1 = (y0 + y1)*model->image->width + (x0 + x1);
 
                     imdata[idx1] += value*A;
-                    derivatives[idx + 2][idx1] = -value/model->errors->double_data[idx1];
+                    if(model->good[idx1] >= 0)
+                        derivatives[idx + 2][model->good[idx1]] = -value/model->errors->double_data[idx1];
                 }
         else
             for(y1 = MAX(0, -y0); y1 < MIN(stamp->height, model->image->height - y0); y1++)
@@ -344,24 +323,13 @@ int fn_mpfit(int Npoints, int Nparams, double *params, double *residuals, double
 {
     model_str *model = (model_str *)data;
     double *imdata = (double *)malloc(sizeof(double)*model->image->width*model->image->height);
-    double scale = 10.0;
     int d;
-    int pos = 0;
 
-    //model_fill_image(model, params, residuals, derivatives);
     model_fill_image(model, params, imdata, derivatives);
 
-    for(d = 0; d < Npoints; d++){
-        //residuals[d] = (model->image->double_data[d] - residuals[d])/model->errors->double_data[d];
-        if(!(model->mask->data[d] & FLAG_SATURATED) && !(model->mask->data[d] & FLAG_BAD)){
-            residuals[pos] = (model->image->double_data[d] - imdata[d])/model->errors->double_data[d];
-
-            /* if(residuals[pos] > 0) */
-            /*     residuals[pos] = scale*log(10)*log10(1.0 + residuals[pos]/scale); */
-            /* else if(residuals[pos] < 0) */
-            /*     residuals[pos] = -scale*log(10)*log10(1.0 - residuals[pos]/scale); */
-
-            pos ++;
+    for(d = 0; d < model->image->width*model->image->height; d++){
+        if(model->good[d] >= 0){
+            residuals[model->good[d]] = (model->image->double_data[d] - imdata[d])/model->errors->double_data[d];
         }
     }
 
@@ -412,6 +380,7 @@ void model_fit(model_str *model)
     if(debug){
         image_dump_to_fits(model->image, "out.crop.fits");
         image_dump_to_fits(model->errors, "out.croperr0.fits");
+        image_dump_to_fits(model->mask, "out.cropmask.fits");
         model_dump_to_fits(model, "out.model.fits", "out.peaks0.txt");
         image_dump_to_fits(model->psfs[0], "out.psf.fits");
     }
@@ -450,19 +419,22 @@ double model_peak_chisq(model_str *model, peak_str *peak, int *nbad_ptr)
 
     for(x = MAX(0, floor(peak->x - model->x0 - 0.5*size)); x < MIN(model->image->width, ceil(peak->x - model->x0 + 0.5*size)); x++)
         for(y = MAX(0, floor(peak->y - model->y0 - 0.5*size)); y < MIN(model->image->height, ceil(peak->y - model->y0 + 0.5*size)); y++){
-            chisq += pow(model->residuals[y*model->image->width + x], 2);
+            if(model->good[y*model->image->width + x] < 0)
+                continue;
+
+            chisq += pow(model->residuals[model->good[y*model->image->width + x]], 2);
             Npoints ++;
 
             if(debug && peak->id == peak_to_stop && FALSE)
-                printf("%g\n", model->residuals[y*model->image->width + x]);
+                printf("%g\n", model->residuals[model->good[y*model->image->width + x]]);
 
             /* Count the bad pixels near peak top */
             /* FIXME: make it configurable and optional */
             if(x >= floor(peak->x - model->x0 - 1) && x <= ceil(peak->x - model->x0 + 1) &&
                y >= floor(peak->y - model->y0 - 1) && y <= ceil(peak->y - model->y0 + 1) &&
-               model->residuals[y*model->image->width + x] < -5.0){
+               model->residuals[model->good[y*model->image->width + x]] < -5.0){
                 if(debug)
-                    dprintf("bad in peak %d: %d %d - %g\n", peak->id, x + model->x0, y + model->y0, model->residuals[y*model->image->width + x]);
+                    dprintf("bad in peak %d: %d %d - %g\n", peak->id, x + model->x0, y + model->y0, model->residuals[model->good[y*model->image->width + x]]);
                 nbad ++;
             }
         }
@@ -613,7 +585,7 @@ void normalize_and_subtract_peaks_from_image(image_str *image, psf_str *psf, str
             int y;
             double I = 0.0;
 
-            image_str *psfi = psf_sampled_image_3d(psf, peak->x, peak->y, -2.5*log10(MAX(1, peak->flux)));
+            image_str *psfi = psf_sampled_image(psf, peak->x, peak->y);
 
             peak->fwhm = image_fwhm(psfi);
             peak->ellipticity = image_ellipticity(psfi);
@@ -761,6 +733,7 @@ int model_deblend(model_str *model)
 void psf_fit_peaks(image_str *image, image_str *errors, psf_str *psf, image_str *mask, double threshold, int is_deblend, struct list_head *peaks)
 {
     struct kdtree *kd = kd_create(2);
+    time_str time_start = time_current();
     peak_str *peak;
     int size = 2*floor(0.5*psf->width*psf->pix_step); /* It should be always even */
     int edgesize = 1.0;
@@ -801,7 +774,7 @@ void psf_fit_peaks(image_str *image, image_str *errors, psf_str *psf, image_str 
             model->threshold = threshold;
 
             if(debug)
-                dprintf("\nmodel for peak %d: %g %g - %d %d\n", peak->id, peak->x, peak->y, xc, yc);
+                dprintf("\nmodel for peak %d (flags %d): %g %g - %d %d\n", peak->id, peak->flags, peak->x, peak->y, xc, yc);
 
             while(!kd_res_end(res)){
                 peak_str *peak1 = kd_res_item_data(res);
@@ -878,7 +851,7 @@ void psf_fit_peaks(image_str *image, image_str *errors, psf_str *psf, image_str 
             Nprocessed += Np;
 
             if(isatty(fileno(stderr)))
-                dprintf("\r  %d / %d - %d peaks        \r", Nprocessed, Npeaks, N);
+                dprintf("\r  %d / %d - %d peaks - %g s        \r", Nprocessed, Npeaks, N, 1e-3*time_interval(time_start, time_current()));
 
             model_delete(model);
 
@@ -965,7 +938,6 @@ int main(int argc, char **argv)
     char *darkname = NULL;
     char *flatname = NULL;
     char *maskname = NULL;
-    char *gainname = NULL;
     char *simplename = NULL;
     char *preprocessedname = NULL;
     char *errorsname = NULL;
@@ -995,7 +967,7 @@ int main(int argc, char **argv)
     int is_preprocess = FALSE;
     int is_sex = FALSE;
     int is_aper = FALSE;
-    int is_deblend = TRUE;
+    int is_deblend = FALSE;
 
     int is_preprocessed = FALSE;
 
@@ -1012,7 +984,6 @@ int main(int argc, char **argv)
     image_str *image = NULL;
     image_str *errors = NULL;
     image_str *mask = NULL;
-    image_str *gainmap = NULL;
     image_str *dark = NULL;
     image_str *flat = NULL;
     image_str *bg = NULL;
@@ -1057,7 +1028,6 @@ int main(int argc, char **argv)
 
                "bias=%lf", &bias,
                "gain=%lf", &gain,
-               "gainmap=%s", &gainname,
                "readnoise=%lf", &readnoise,
                "threshold=%lf", &threshold,
 
@@ -1187,29 +1157,7 @@ int main(int argc, char **argv)
         image_fill(mask, 0);
     }
 
-    /* Gain map */
-    if(gainname){
-        double mad = 0;
-        int d;
-
-        gainmap = image_create_from_fits(gainname);
-
-        //gain = image_median(gainmap);
-        gain = get_median_mad(gainmap->double_data, gainmap->width*gainmap->height, &mad);
-
-        for(d = 0; d < gainmap->width*gainmap->height; d++)
-            //if(fabs(gainmap->double_data[d]/gain - 1.0) > 0.25 || !isfinite(gainmap->double_data[d]))
-            //if(mask->data[d] & FLAG_BAD)
-                gainmap->double_data[d] = gain;
-
-        saturation = floor(welldepth/gain);
-
-        dprintf("GAIN map read from %s, median is %g, MAD is %g\n", gainname, gain, mad);
-    } else if(gain > 0){
-        gainmap = image_create_double(image->width, image->height);
-
-        image_fill(gainmap, gain);
-    } else {
+    if(gain <= 0){
         dprintf("No GAIN provided! Exiting.\n");
         return EXIT_FAILURE;
     }
@@ -1222,7 +1170,7 @@ int main(int argc, char **argv)
         dprintf("DARK frame read from %s, mean=%g\n", darkname, image_mean(dark));
 
         if(is_andor){
-            image_linearize(dark, NULL);
+            //image_linearize(dark, NULL);
             dprintf("ANDOR dual-amplifier correction applied to DARK frame\n");
         }
     } else {
@@ -1257,7 +1205,8 @@ int main(int argc, char **argv)
 
             for(d = 0; d < image->width*image->height; d++)
                 if(emask->data[d])
-                    mask->data[d] |= FLAG_SATURATED;
+                    //mask->data[d] |= FLAG_SATURATED;
+                    mask->data[d] |= FLAG_BAD;
 
             image_delete(emask);
         }
@@ -1285,7 +1234,7 @@ int main(int argc, char **argv)
 
         /* Assign errors */
         for(d = 0; d < image->width*image->height; d++){
-            errors->double_data[d] = hypot(readnoise/gainmap->double_data[d], sqrt(MAX(0, (image->double_data[d] - bias)/gainmap->double_data[d])));
+            errors->double_data[d] = hypot(readnoise/gain, sqrt(MAX(0, (image->double_data[d] - bias)/gain)));
         }
 
         /* Apply flat */
@@ -1302,9 +1251,34 @@ int main(int argc, char **argv)
         image_keyword_add_double(image, "RDNOISE", readnoise, "Readout noise");
         image_keyword_add_double(image, "SATURATE", saturation, "Saturation level");
 
+        if(debug){
+            image_dump_to_fits(image, "out.prebg.fits");
+            image_dump_to_fits(errors, "out.eprebg.fits");
+        }
+
         /* Estimate background */
         //bg = get_background(image, mask, 128);
-        bg = image_background(image, 256);
+        bg = image_background(image, errors, NULL, 256);
+        if(0){
+            image_str *mask1 = image_create(image->width, image->height);
+            int iter;
+
+            for(iter = 0; iter < 3; iter++){
+                image_str *bg1 = image_background(image, NULL /* errors */, mask, 128);
+
+                for(d = 0; d < image->width*image->height; d++)
+                    if(fabs(image->double_data[d] - bg1->double_data[d]) > 4.0*errors->double_data[d])
+                        mask1->data[d] = TRUE;
+
+                image_delete(bg1);
+            }
+
+            image_dump_to_fits(mask1, "out.mask1.fits");
+
+            bg = image_background(image, errors, mask1, 128);
+
+            image_delete(mask1);
+        }
 
         if(!psf_subtract_bg)
             for(d = 0; d < image->width*image->height; d++)
@@ -1500,7 +1474,7 @@ int main(int argc, char **argv)
         dprintf("Extracting initial peaks\n");
 
         if(peaksname) {
-            load_peaks(peaksname, image, mask, is_radec, &peaks);
+            load_peaks(peaksname, image, errors, mask, is_radec, &peaks);
             dprintf("%d image peaks loaded from %s\n", list_length(&peaks), peaksname);
         } else {
             find_peaks(image, smooth, errors, mask, threshold, &peaks);
@@ -1564,6 +1538,13 @@ int main(int argc, char **argv)
 
             psf_fit_peaks(image, errors, psf, mask, threshold, is_deblend, &peaks);
 
+            {
+                peak_str *peak;
+
+                foreach(peak, peaks)
+                    coords_get_ra_dec(&image->coords, peak->x, peak->y, &peak->ra, &peak->dec);
+            }
+
             dump_peaks_to_file(&peaks, outname, PEAK_MEASURED);
 
             dprintf("Final peaks stored to %s\n", outname);
@@ -1586,7 +1567,6 @@ int main(int argc, char **argv)
     image_delete(image);
     image_delete(errors);
     image_delete(mask);
-    image_delete(gainmap);
 
     psf_delete(psf);
 

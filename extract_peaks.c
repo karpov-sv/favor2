@@ -12,6 +12,9 @@
 static int dx[] = {0, 0,  0, 1, 1,  1, -1, -1, -1};
 static int dy[] = {0, 1, -1, 1, 0, -1,  1,  0, -1};
 static int dN = 9;
+/* static int dx[] = {0, 0,  0, 1, -1}; */
+/* static int dy[] = {0, 1, -1, 0, 0}; */
+/* static int dN = 5; */
 
 #define IS_PIXEL_VALID(image, x, y) ((x) >= 0 && (x) < (image)->width && (y) >= 0 && (y) < (image)->height)
 
@@ -24,6 +27,7 @@ typedef struct pixel_str {
     double flux;
     double flux_err;
     double smooth;
+    double excess;
 
     int is_edge;
 } pixel_str;
@@ -48,6 +52,11 @@ typedef struct region_str {
     pixel_str *saddle;
     pixel_str *max;
     double prominence;
+
+    int min_x;
+    int max_x;
+    int min_y;
+    int max_y;
 
     struct list_head pixels;
 } region_str;
@@ -112,6 +121,9 @@ static peak_str *peak_from_region(region_str *region, image_str *mask)
 
     int flags = 0;
 
+    /* if(list_length(&region->pixels) > 100) */
+    /*     dprintf("len = %d\n", list_length(&region->pixels)); */
+
     foreach(pixel, region->pixels){
         double value = pixel->smooth;
 
@@ -119,18 +131,21 @@ static peak_str *peak_from_region(region_str *region, image_str *mask)
             double x = pixel->x;
             double y = pixel->y;
 
-            sum_x += value*x;
-            sum_x2 += value*x*x;
-            sum_y += value*y;
-            sum_y2 += value*y*y;
-            sum_xy += value*x*y;
-            sum_weight += value;
-
             sum_flux += value;
             sum_flux_err += pixel->flux_err*pixel->flux_err;
 
+            if(!(PIXEL(mask, pixel->x, pixel->y) & FLAG_SATURATED)){
+                sum_x += value*x;
+                sum_x2 += value*x*x;
+                sum_y += value*y;
+                sum_y2 += value*y*y;
+                sum_xy += value*x*y;
+                sum_weight += value;
+            }
+
             flags |= PIXEL(mask, pixel->x, pixel->y);
-            if(x == 0 || x == mask->width-1 || y == 0 || y == mask->height-1)
+            //if(x == 0 || x == mask->width-1 || y == 0 || y == mask->height-1)
+            if(x <= 1 || x >= mask->width-2 || y <= 1 || y >= mask->height-2)
                 flags |= FLAG_TRUNCATED;
 
             N ++;
@@ -199,7 +214,11 @@ static inline void add_pixel_to_region(int x, int y, region_str *region, image_s
 
     pixel->smooth = PIXEL_DOUBLE(smooth, x, y);
 
+    pixel->excess = PIXEL_DOUBLE(smooth, x, y)/PIXEL_DOUBLE(errors, x, y);
+
     pixel->is_edge = FALSE;
+
+    //dprintf("%d %d - %g\n", pixel->x, pixel->y, pixel->flux);
 
     add_to_list(region->pixels, pixel);
 }
@@ -223,6 +242,11 @@ static void update_region_stats(region_str *region, image_str *image, region_str
     region->max = NULL;
     region->saddle = NULL;
 
+    region->min_x = pixel->x;
+    region->max_x = pixel->x;
+    region->min_y = pixel->y;
+    region->max_y = pixel->y;
+
     foreach(pixel, region->pixels){
         int i;
 
@@ -232,6 +256,11 @@ static void update_region_stats(region_str *region, image_str *image, region_str
         region->max_flux = MAX(region->max_flux, pixel->flux);
         region->mean_flux += pixel->flux;
         region->npixels ++;
+
+        region->min_x = MIN(region->min_x, pixel->x);
+        region->max_x = MAX(region->min_x, pixel->x);
+        region->min_y = MIN(region->min_y, pixel->y);
+        region->max_y = MAX(region->min_y, pixel->y);
 
         if(!region->max || region->max->flux < pixel->flux)
             region->max = pixel;
@@ -286,22 +315,25 @@ static void update_region_stats(region_str *region, image_str *image, region_str
 
 static void dump_region_a(region_str *region, char *filename)
 {
-    FILE *file = fopen(filename, "a");
+    //FILE *file = fopen(filename, "a");
+    FILE *file = fopen(filename, "w");
     pixel_str *pixel = NULL;
 
-    foreach(pixel, region->pixels)
+    foreachback(pixel, region->pixels)
         if(pixel != region->saddle)
-            fprintf(file, "%d %d %g %g %d\n", pixel->x, pixel->y, pixel->flux, pixel->flux - region->bg_mean, pixel->is_edge);
+            fprintf(file, "%d %d %g %g %g %d\n", pixel->x, pixel->y, pixel->flux, pixel->flux - region->bg_mean, pixel->excess, pixel->is_edge);
         else
-            fprintf(file, "%d %d %g %g %d\n", pixel->x, pixel->y, pixel->flux, pixel->flux - region->bg_mean, 2);
+            fprintf(file, "%d %d %g %g %g %d\n", pixel->x, pixel->y, pixel->flux, pixel->flux - region->bg_mean, pixel->excess, 2);
 
     fclose(file);
 }
 
-void measure_peak(peak_str *peak, image_str *image, image_str *mask)
+void measure_peak(peak_str *peak, image_str *image, image_str *errors, image_str *mask)
 {
     double flux = 0;
-    //double flux_err = 0;
+    double flux_err = 0;
+    double flux0 = 0;
+    double flux_err0 = 0;
     double r0 = 3;
     int flags = 0;
     int N = 0;
@@ -312,6 +344,7 @@ void measure_peak(peak_str *peak, image_str *image, image_str *mask)
         for(y = MAX(floor(peak->y - r0), 0); y <= MIN(ceil(peak->y + r0), image->height - 1); y++)
             if(hypot(x - peak->x, y - peak->y) < r0){
                 flux += PIXEL_DOUBLE(image, x, y);
+                flux_err += PIXEL_DOUBLE(errors, x, y)*PIXEL_DOUBLE(errors, x, y);
                 flags |= PIXEL(mask, x, y);
                 N ++;
             }
@@ -324,7 +357,99 @@ void measure_peak(peak_str *peak, image_str *image, image_str *mask)
 
     if(flux > 0){
         peak->flux = flux;
+        peak->dflux = sqrt(flux_err);
         peak->flags |= flags;
+
+        peak->excess = peak->flux/peak->dflux;
+    } else
+        peak->excess = 0;
+}
+
+void dump_peak(peak_str *peak, image_str *image, image_str *errors, image_str *mask, char *filename)
+{
+    FILE *file = fopen(filename, "w");
+    double r0 = 3;
+    int x;
+    int y;
+
+    for(x = MAX(floor(peak->x - r0), 0); x <= MIN(ceil(peak->x + r0), image->width - 1); x++)
+        for(y = MAX(floor(peak->y - r0), 0); y <= MIN(ceil(peak->y + r0), image->height - 1); y++)
+            if(hypot(x - peak->x, y - peak->y) < 2*r0){
+                fprintf(file, "%d %d %g %g %g %d\n", x, y, PIXEL_DOUBLE(image, x, y), PIXEL_DOUBLE(errors, x, y), PIXEL_DOUBLE(image, x, y)/PIXEL_DOUBLE(errors, x, y), hypot(x - peak->x, y - peak->y) < r0);
+            }
+
+    fclose(file);
+}
+
+static inline double sinc(double x)
+{
+    if(fabs(x) < 1e-4)
+        return 1;
+    else
+        return sin(M_PI*x)/M_PI/x;
+}
+
+void measure_peak_new(peak_str *peak, image_str *image, image_str *mask)
+{
+    double flux = 0;
+    //double flux_err = 0;
+    double r0 = 3.5;
+    int flags = 0;
+    int N = 0;
+    double x;
+    double y;
+
+    inline double interpolate_image(double x, double y)
+    {
+        double sum = 0;
+        int ex = 4;
+        int x1;
+        int y1;
+
+        for(x1 = MAX(0, round(x) - ex); x1 <= MIN(image->width - 1, round(x) + ex); x1++)
+            for(y1 = MAX(0, round(y) - ex); y1 <= MIN(image->height - 1, round(y) + ex); y1++)
+                sum += PIXEL_DOUBLE(image, x1, y1)*sinc(x - x1)*sinc(y - y1);
+
+        if(!isfinite(sum)){
+            dprintf("%g %g - %g\n", x, y, sum);
+
+            exit(1);
+        }
+
+        return sum;
+    }
+
+    /* printf("\n"); */
+
+    for(x = MAX(floor(peak->x - r0 - 1), 0); x <= MIN(ceil(peak->x + r0 + 1), image->width - 1); x++)
+        for(y = MAX(floor(peak->y - r0 - 1), 0); y <= MIN(ceil(peak->y + r0 + 1), image->height - 1); y++){
+            int nsteps = 3;
+            double step = 1.0/nsteps;
+            double dx;
+            double dy;
+
+            for(dy = -0.5; dy < 0.5-step; dy += step)
+                for(dx = -0.5; dx < 0.5-step; dx += step){
+                    if(hypot(x - peak->x, y - peak->y) < r0){
+                        flux += interpolate_image(x + dx + 0.5*step, y + dy + 0.5*step)*step*step;
+                    }
+                }
+
+            /* Flags */
+            if(hypot(x - peak->x, y - peak->y) <= 3.0*r0){
+                //flux += PIXEL_DOUBLE(image, x, y);
+                flags |= PIXEL(mask, x, y);
+                /* printf("%g %g - %d - %d\n", x, y, PIXEL(mask, x, y), flags); */
+                N ++;
+            }
+
+        }
+
+
+    if(flux > 0){
+        peak->flux = flux;
+        peak->flags |= flags;
+        /* printf("%g %g %g %d\n", peak->x, peak->y, peak->flux, peak->flags); */
     } else
         peak->excess = 0;
 }
@@ -357,6 +482,7 @@ void sort_peaks(struct list_head *list)
 void find_peaks(image_str *image, image_str *smooth, image_str *errors, image_str *mask, double threshold, struct list_head *peaks)
 {
     region_str **map = (region_str **)calloc(image->width*image->height, sizeof(region_str *));
+    image_str *weighted = image_create_double(image->width, image->height);
     struct list_head regions;
     region_str *region = NULL;
     int x = 0;
@@ -368,24 +494,32 @@ void find_peaks(image_str *image, image_str *smooth, image_str *errors, image_st
     init_list(*peaks);
     init_list(regions);
 
+    for(x = 0; x < image->width*image->height; x++)
+        weighted->double_data[x] = smooth->double_data[x]/errors->double_data[x];
+
+    if(weighted->width > 50)
+        image_dump_to_fits(weighted, "out.weighted.fits");
+    else
+        image_dump_to_fits(weighted, "out.weighted.small.fits");
+
     for(y = 0; y < smooth->height; y++)
         for(x = 0; x < smooth->width; x++){
             int d;
 
-            if(!map[x + y*image->width] && PIXEL_DOUBLE(smooth, x, y) > 1.5*PIXEL_DOUBLE(errors, x, y)){
+            if(!map[x + y*image->width] && PIXEL_DOUBLE(smooth, x, y) > 2.0*PIXEL_DOUBLE(errors, x, y)){
                 int x0;
                 int y0;
 
-                get_reachable_maximum_xy(smooth, NULL, x, y, &x0, &y0, 0);
+                get_reachable_maximum_xy(weighted, mask /* NULL */, x, y, &x0, &y0, 0);
 
-                if(mask && ((PIXEL(mask, x, y) & FLAG_BAD) || (PIXEL(mask, x0, y0) & FLAG_BAD) ||
-                            (PIXEL(mask, x, y) & FLAG_SATURATED)))
+                if(mask && ((PIXEL(mask, x, y) & FLAG_BAD) || (PIXEL(mask, x, y) & FLAG_SATURATED)))
                     /* Skip BAD pixels */
                     continue;
 
                 region = map[x0 + y0*image->width];
 
                 if(!region){
+                    //dprintf("\n\n");
                     region = calloc(1, sizeof(region_str));
                     init_list(region->pixels);
                     add_to_list(regions, region);
@@ -496,6 +630,24 @@ void find_peaks(image_str *image, image_str *smooth, image_str *errors, image_st
         }
     }
 
+    foreach(region, regions){
+        if(list_length(&region->pixels) > 1000){
+            free_list(region->pixels);
+            del_from_list_in_foreach_and_run(region, free(region));
+        }
+    }
+
+    foreach(region, regions){
+        double fill = 1.0*region->npixels/(region->max_x + 1 - region->min_x)/(region->max_y + 1 - region->min_y);
+
+        /* dprintf("%d %g\n", region->npixels, fill); */
+
+        /* if(fill < 0.25){ */
+        /*     free_list(region->pixels); */
+        /*     del_from_list_in_foreach_and_run(region, free(region)); */
+        /* } */
+    }
+
     //dprintf("%d regions after merging\n", list_length(&regions));
 
     /* system("rm -f out.all.txt"); */
@@ -506,18 +658,25 @@ void find_peaks(image_str *image, image_str *smooth, image_str *errors, image_st
 
         peak = peak_from_region(region, mask);
 
-        measure_peak(peak, image, mask);
+        measure_peak(peak, image, errors, mask);
+        //measure_peak_new(peak, image, mask);
 
         /* if(peak->excess > threshold || TRUE){ */
         /*     dump_region_a(region, "out.all.txt"); */
         /* } */
 
         if(peak->excess > threshold &&
-           (region->npixels > 5 || (!(peak->flags & FLAG_SATURATED) && region->npixels > 1)) &&
+           (region->npixels > 2 || (!(peak->flags & FLAG_SATURATED) && region->npixels > 2)) &&
            /* region->npixels - region->npixels_bg > 10 && */
            /* region->max_flux - region->bg_mean > 5.0*region->bg_sigma && */ TRUE){
             peak->id = Ntotal++;
             add_to_list(*peaks, peak);
+
+            /* if(peak->id == 4){ */
+            /*     dump_peak(peak, image, errors, mask, "out.all2.txt"); */
+            /*     dump_region_a(region, "out.all.txt"); */
+            /*     //exit(1); */
+            /* } */
         } else
             free(peak);
 
@@ -528,10 +687,12 @@ void find_peaks(image_str *image, image_str *smooth, image_str *errors, image_st
 
     //dprintf("%d peaks\n", list_length(peaks));
 
+    image_delete(weighted);
+
     free_list(regions);
 }
 
-void load_peaks(char *filename, image_str *image, image_str *mask, int is_radec, struct list_head *peaks)
+void load_peaks(char *filename, image_str *image, image_str *errors, image_str *mask, int is_radec, struct list_head *peaks)
 {
     FILE *file = fopen(filename, "r");
     int Ntotal = 0;
@@ -556,7 +717,8 @@ void load_peaks(char *filename, image_str *image, image_str *mask, int is_radec,
             peak->state = PEAK_INITIAL;
             peak->id = Ntotal++;
 
-            measure_peak(peak, image, mask);
+            measure_peak(peak, image, errors, mask);
+            //measure_peak_new(peak, image, mask);
 
             add_to_list(*peaks, peak);
         }
@@ -574,8 +736,7 @@ void dump_peaks_to_file(struct list_head *peaks, char *filename, int state)
 
     foreach(peak, *peaks){
         if(peak->state & state)
-            /* fprintf(file, "%g %g %g %g %d %g %g %g %g %g %g %g %d\n", peak->x, peak->y, peak->flux, peak->dflux, peak->flags, peak->chisq, peak->dx, peak->dy, peak->a, peak->b, peak->theta, peak->excess, peak->id); */
-            fprintf(file, "%g %g %g %g %d %g %g %d %g %g %g %g\n", peak->x, peak->y, peak->flux, peak->dflux, peak->flags, peak->chisq, peak->bg, peak->id, peak->fwhm, peak->ellipticity, peak->minflux, peak->maxflux);
+            fprintf(file, "%g %g %g %g %d %g %g %g %g %g %d %g %g\n", peak->x, peak->y, peak->flux, peak->dflux, peak->flags, peak->a, peak->b, peak->theta, peak->bg, peak->chisq, peak->id, peak->ra, peak->dec);
     }
 
     if(file != stdout)

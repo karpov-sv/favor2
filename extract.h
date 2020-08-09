@@ -45,19 +45,27 @@ typedef struct peak_str {
     double theta;
 
     /* Some PSF statistics */
+    double params[10];
+
     double fwhm;
     double ellipticity;
+    double beta;
+    double egg;
+    double beta2;
 
     double excess;
 
     double chisq;
+
+    double ra;
+    double dec;
 
     int flags;
     int state;
 } peak_str;
 
 void find_peaks(image_str *, image_str *, image_str *, image_str *, double , struct list_head *);
-void load_peaks(char *, image_str *, image_str *, int , struct list_head *);
+void load_peaks(char *, image_str *, image_str *, image_str *, int , struct list_head *);
 
 void dump_peaks_to_file(struct list_head *, char *, int );
 
