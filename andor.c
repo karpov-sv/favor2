@@ -480,7 +480,7 @@ image_str *andor_wait_image(andor_str *andor, double delay)
     image_keyword_add_int(image, "NOISEFILTER", get_bool(andor->handle, L"SpuriousNoiseFilter"), "Spurious Noise Filter");
     image_keyword_add_int(image, "BASELINE", get_int(andor->handle, L"BaselineLevel"), "Current Baseline Level");
     image_keyword_add_int(image, "BLEMISHCORRECTION", get_bool(andor->handle, L"StaticBlemishCorrection"), "Static Blemish Correction");
-    image_keyword_add(image, "SERIAL", get_string(andor->handle, L"SerialNumber"), "Serial Number");
+    image_keyword_add(image, "SERIAL", w2c(get_string(andor->handle, L"SerialNumber")), "Serial Number");
 
     if(get_bool(andor->handle, L"MetadataEnable")){
         unsigned char *ptr = buf + size;
