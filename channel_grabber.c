@@ -135,6 +135,8 @@ void process_grabber_command(grabber_str *grabber, char *string)
         int filter = -1;
         int overlap = -1;
         int count = -1;
+        double temperature = -110;
+        int blemish = -1;
 
         int is_started = grabber->channel->grabber_state == STATE_ON;
 
@@ -148,6 +150,8 @@ void process_grabber_command(grabber_str *grabber, char *string)
                      "filter=%d", &filter,
                      "overlap=%d", &overlap,
                      "count=%d", &count,
+                     "temperature=%lf", &temperature,
+                     "blemish=%d", &blemish,
                      NULL);
 
         if(is_started)
@@ -186,6 +190,12 @@ void process_grabber_command(grabber_str *grabber, char *string)
             AT_SetEnumString(grabber->andor->handle, L"CycleMode", L"Continuous");
         }
 
+        if(temperature > -100)
+            AT_SetFloat(grabber->andor->handle, L"TargetSensorTemperature", temperature);
+
+        if(blemish >= 0)
+            AT_SetBool(grabber->andor->handle, L"StaticBlemishCorrection", blemish);
+
         if(is_started)
             grabber_start(grabber);
 #endif
@@ -212,6 +222,7 @@ void *grabber_worker(void *data)
     AT_SetEnumString(grabber->andor->handle, L"TriggerMode", L"External");
     AT_SetEnumIndex(grabber->andor->handle, L"ElectronicShutteringMode", 1);
     AT_SetFloat(grabber->andor->handle, L"ExposureTime", 0.0995);
+    AT_SetBool(grabber->andor->handle, L"StaticBlemishCorrection", 0);
 #endif
 
 #else

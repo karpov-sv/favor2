@@ -343,6 +343,7 @@ void andor_info(andor_str *andor)
     dprintf("MetadataTimestamp: %d\n", get_bool(andor->handle, L"MetadataTimestamp"));
 
     dprintf("SpuriousNoiseFilter: %d\n", get_bool(andor->handle, L"SpuriousNoiseFilter"));
+    dprintf("StaticBlemishCorrection: %d\n", get_bool(andor->handle, L"StaticBlemishCorrection"));
 
     dprintf("Fan Speed: %ls\n", get_enum_string(andor->handle, L"FanSpeed"));
 }
@@ -478,6 +479,8 @@ image_str *andor_wait_image(andor_str *andor, double delay)
     image_keyword_add_int(image, "SIMPLEPREAMP", get_enum_index(andor->handle, L"SimplePreAmpGainControl"), w2c(get_enum_string(andor->handle, L"SimplePreAmpGainControl")));
     image_keyword_add_int(image, "NOISEFILTER", get_bool(andor->handle, L"SpuriousNoiseFilter"), "Spurious Noise Filter");
     image_keyword_add_int(image, "BASELINE", get_int(andor->handle, L"BaselineLevel"), "Current Baseline Level");
+    image_keyword_add_int(image, "BLEMISHCORRECTION", get_bool(andor->handle, L"StaticBlemishCorrection"), "Static Blemish Correction");
+    image_keyword_add(image, "SERIAL", w2c(get_string(andor->handle, L"SerialNumber")), "Serial Number");
 
     if(get_bool(andor->handle, L"MetadataEnable")){
         unsigned char *ptr = buf + size;
